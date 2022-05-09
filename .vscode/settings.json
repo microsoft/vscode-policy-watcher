@@ -1,5 +1,6 @@
 {
   "files.associations": {
-    "system_error": "cpp"
+    "system_error": "cpp",
+    "thread": "cpp"
   }
 }

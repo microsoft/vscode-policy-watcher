@@ -15,10 +15,23 @@
                     "defines": [
                         "_HAS_EXCEPTIONS=1"
                     ],
+                    "libraries": [
+                        "userenv.lib"
+                    ],
                     "msvs_settings": {
                         "VCCLCompilerTool": {
-                            "ExceptionHandling": 1
+                            "ExceptionHandling": 1,
+                            'AdditionalOptions': [
+                                '/W3',
+                                '/Qspectre',
+                                '/guard:cf'
+                            ]
                         },
+                        'VCLinkerTool': {
+                            'AdditionalOptions': [
+                                '/guard:cf'
+                            ]
+                        }
                     },
                 }],
                 ["OS=='mac'", {
