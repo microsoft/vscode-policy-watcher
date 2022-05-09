@@ -1,5 +1,4 @@
-const { start } = require('bindings')('vscode-policy');
+const createWatcher = require('bindings')('vscode-policy');
 
-start(function (clock) {
-  console.log(clock);
-}, 5);
+const watcher = createWatcher(msg => console.log(msg));
+setTimeout(() => console.log(watcher.dispose()), 1000);

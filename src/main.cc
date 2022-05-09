@@ -7,12 +7,12 @@
 
 using namespace Napi;
 
-void CallJs(Napi::Env env, Function callback, Reference<Value> *context, std::string *data);
+void CallJs(Env env, Function callback, Reference<Value> *context, std::string *data);
 
 std::thread nativeThread;
 TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn;
 
-void CallJs(Napi::Env env, Function callback, Reference<Value> *context,
+void CallJs(Env env, Function callback, Reference<Value> *context,
             std::string *data)
 {
   if (env != nullptr)
@@ -100,30 +100,34 @@ void PollForChanges()
   tsfn.Release();
 }
 
-void StopPolling(Napi::Env, void *, Reference<Value> *ctx)
+void StopPolling(Env, void *, Reference<Value> *ctx)
 {
   nativeThread.join();
   delete ctx;
 }
 
-Value Start(const CallbackInfo &info)
+Value DisposeWatcher(const CallbackInfo &info)
 {
-  Napi::Env env = info.Env();
+  auto env = info.Env();
 
-  if (info.Length() < 2)
+  std::cout << "want to dispose" << std::endl;
+
+  return env.Null();
+}
+
+Value CreateWatcher(const CallbackInfo &info)
+{
+  auto env = info.Env();
+
+  if (info.Length() < 1)
   {
-    throw TypeError::New(env, "Expected two arguments");
+    throw TypeError::New(env, "Expected 1 argument");
   }
   else if (!info[0].IsFunction())
   {
     throw TypeError::New(env, "Expected first arg to be function");
   }
-  else if (!info[1].IsNumber())
-  {
-    throw TypeError::New(env, "Expected second arg to be number");
-  }
 
-  // auto count = info[1].As<Number>().Int32Value();
   auto context = new Reference<Value>(Persistent(info.This()));
 
   tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
@@ -136,13 +140,15 @@ Value Start(const CallbackInfo &info)
       StopPolling);
 
   nativeThread = std::thread(PollForChanges);
-  return Boolean::New(env, true);
+
+  auto result = Object::New(env);
+  result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher"));
+  return result;
 }
 
-Napi::Object Init(Napi::Env env, Object exports)
+Object Init(Env env, Object exports)
 {
-  exports.Set("start", Function::New(env, Start));
-  return exports;
+  return Function::New(env, CreateWatcher, "createWatcher");
 }
 
 NODE_API_MODULE(clock, Init)
