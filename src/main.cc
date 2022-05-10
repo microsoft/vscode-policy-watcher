@@ -7,11 +7,6 @@
 
 using namespace Napi;
 
-void CallJs(Env env, Function callback, Reference<Value> *context, std::string *data);
-
-std::thread nativeThread;
-TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn;
-
 void CallJs(Env env, Function callback, Reference<Value> *context,
             std::string *data)
 {
@@ -29,7 +24,7 @@ void CallJs(Env env, Function callback, Reference<Value> *context,
   }
 }
 
-void PollForChanges()
+void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
 {
   // for (int i = 0; i < count; i++) {
   //   // Create new data
@@ -100,9 +95,11 @@ void PollForChanges()
   tsfn.Release();
 }
 
-void StopPolling(Env, void *, Reference<Value> *ctx)
+void StopPolling(Env, std::thread **nativeThreadPtr, Reference<Value> *ctx)
 {
-  nativeThread.join();
+  (*nativeThreadPtr)->join();
+  delete *nativeThreadPtr;
+  delete nativeThreadPtr;
   delete ctx;
 }
 
@@ -129,17 +126,19 @@ Value CreateWatcher(const CallbackInfo &info)
   }
 
   auto context = new Reference<Value>(Persistent(info.This()));
-
-  tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
+  
+  std::thread** nativeThreadPtr = new std::thread*;
+  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
       env,
       info[0].As<Function>(),
       "PolicyWatcher",
       0,
       1,
       context,
-      StopPolling);
+      StopPolling,
+      nativeThreadPtr);
 
-  nativeThread = std::thread(PollForChanges);
+  *nativeThreadPtr = new std::thread(PollForChanges, tsfn);
 
   auto result = Object::New(env);
   result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher"));
