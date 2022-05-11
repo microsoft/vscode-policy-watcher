@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <userenv.h>
 #include <iostream>
+#include <tuple>
 
 using namespace Napi;
 
@@ -24,7 +25,7 @@ void CallJs(Env env, Function callback, Reference<Value> *context,
   }
 }
 
-void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
+void PollForChanges(std::tuple<HANDLE, std::thread *> *watcherContext, TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
 {
   // for (int i = 0; i < count; i++) {
   //   // Create new data
@@ -40,7 +41,7 @@ void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJ
   // std::this_thread::sleep_for(std::chrono::seconds(1));
   // }
 
-  HANDLE hHandles[3];
+  HANDLE hHandles[4];
   DWORD dwResult;
 
   // This code assumes that hMachineEvent and hUserEvent
@@ -54,12 +55,13 @@ void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJ
   RegisterGPNotification(hUserEvent, FALSE);
 
   hHandles[0] = hExit;
-  hHandles[1] = hMachineEvent;
-  hHandles[2] = hUserEvent;
+  hHandles[1] = std::get<0>(*watcherContext);
+  hHandles[2] = hMachineEvent;
+  hHandles[3] = hUserEvent;
 
   while (TRUE)
   {
-    dwResult = WaitForMultipleObjects(3, hHandles, FALSE, INFINITE);
+    dwResult = WaitForMultipleObjects(4, hHandles, FALSE, INFINITE);
 
     if ((dwResult == WAIT_FAILED) || ((dwResult - WAIT_OBJECT_0) == 0))
     {
@@ -67,8 +69,15 @@ void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJ
     }
 
     std::string *value;
+    auto eventIndex = (dwResult - WAIT_OBJECT_0);
 
-    if ((dwResult - WAIT_OBJECT_0) == 1)
+    std::cout << "got event " << eventIndex << std::endl;
+
+    if (eventIndex == 1)
+    {
+      break;
+    }
+    else if (eventIndex == 2)
     {
       value = new std::string("Machine notify event signaled.");
     }
@@ -95,19 +104,22 @@ void PollForChanges(TypedThreadSafeFunction<Reference<Value>, std::string, CallJ
   tsfn.Release();
 }
 
-void StopPolling(Env, std::thread **nativeThreadPtr, Reference<Value> *ctx)
+void StopPolling(Env, std::tuple<HANDLE, std::thread *> *watcherContext, Reference<Value> *ctx)
 {
-  (*nativeThreadPtr)->join();
-  delete *nativeThreadPtr;
-  delete nativeThreadPtr;
+  std::get<1>(*watcherContext)->join();
+  CloseHandle(std::get<0>(*watcherContext));
+  delete std::get<1>(*watcherContext);
+  delete watcherContext;
   delete ctx;
 }
 
 Value DisposeWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
+  auto watcherContext = (std::tuple<HANDLE, std::thread *> *)info.Data();
 
   std::cout << "want to dispose" << std::endl;
+  SetEvent(std::get<0>(*watcherContext));
 
   return env.Null();
 }
@@ -126,8 +138,8 @@ Value CreateWatcher(const CallbackInfo &info)
   }
 
   auto context = new Reference<Value>(Persistent(info.This()));
-  
-  std::thread** nativeThreadPtr = new std::thread*;
+  auto watcherContext = new std::tuple<HANDLE, std::thread *>();
+
   auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
       env,
       info[0].As<Function>(),
@@ -136,12 +148,13 @@ Value CreateWatcher(const CallbackInfo &info)
       1,
       context,
       StopPolling,
-      nativeThreadPtr);
+      watcherContext);
 
-  *nativeThreadPtr = new std::thread(PollForChanges, tsfn);
+  std::get<0>(*watcherContext) = CreateEvent(NULL, false, false, NULL);
+  std::get<1>(*watcherContext) = new std::thread(PollForChanges, watcherContext, tsfn);
 
   auto result = Object::New(env);
-  result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher"));
+  result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcherContext));
   return result;
 }
 
