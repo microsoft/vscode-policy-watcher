@@ -8,8 +8,17 @@
 
 using namespace Napi;
 
-void CallJs(Env env, Function callback, Reference<Value> *context,
-            std::string *data)
+struct PolicyWatcher
+{
+  HANDLE hDispose;
+  std::thread *thread;
+};
+
+void CallJs(
+    Env env,
+    Function callback,
+    Reference<Value> *context,
+    std::string *data)
 {
   if (env != nullptr)
   {
@@ -25,43 +34,51 @@ void CallJs(Env env, Function callback, Reference<Value> *context,
   }
 }
 
-void PollForChanges(std::tuple<HANDLE, std::thread *> *watcherContext, TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
+void PollForChanges(
+    PolicyWatcher *watcher,
+    TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
 {
-  // for (int i = 0; i < count; i++) {
-  //   // Create new data
-  //   int *value = new int(clock());
-
-  //   // Perform a blocking call
-  // napi_status status = tsfn.BlockingCall(value);
-  // if (status != napi_ok) {
-  //   // Handle error
-  //   break;
-  // }
-
-  // std::this_thread::sleep_for(std::chrono::seconds(1));
-  // }
-
-  HANDLE hHandles[4];
-  DWORD dwResult;
-
-  // This code assumes that hMachineEvent and hUserEvent
-  // have been initialized.
-
   HANDLE hExit = CreateEvent(NULL, false, false, NULL);
+
+  if (hExit == NULL)
+  {
+    goto done;
+  }
+
   HANDLE hMachineEvent = CreateEvent(NULL, false, false, NULL);
+
+  if (hMachineEvent == NULL)
+  {
+    goto done;
+  }
+
   HANDLE hUserEvent = CreateEvent(NULL, false, false, NULL);
 
-  RegisterGPNotification(hMachineEvent, TRUE);
-  RegisterGPNotification(hUserEvent, FALSE);
+  if (hUserEvent == NULL)
+  {
+    goto done;
+  }
 
-  hHandles[0] = hExit;
-  hHandles[1] = std::get<0>(*watcherContext);
-  hHandles[2] = hMachineEvent;
-  hHandles[3] = hUserEvent;
+  if (!RegisterGPNotification(hMachineEvent, TRUE))
+  {
+    goto done;
+  }
+
+  if (!RegisterGPNotification(hUserEvent, FALSE))
+  {
+    goto done;
+  }
+
+  HANDLE hHandles[4] = {
+      hExit,
+      watcher->hDispose,
+      hMachineEvent,
+      hUserEvent,
+  };
 
   while (TRUE)
   {
-    dwResult = WaitForMultipleObjects(4, hHandles, FALSE, INFINITE);
+    auto dwResult = WaitForMultipleObjects(4, hHandles, FALSE, INFINITE);
 
     if ((dwResult == WAIT_FAILED) || ((dwResult - WAIT_OBJECT_0) == 0))
     {
@@ -70,8 +87,6 @@ void PollForChanges(std::tuple<HANDLE, std::thread *> *watcherContext, TypedThre
 
     std::string *value;
     auto eventIndex = (dwResult - WAIT_OBJECT_0);
-
-    std::cout << "got event " << eventIndex << std::endl;
 
     if (eventIndex == 1)
     {
@@ -94,32 +109,38 @@ void PollForChanges(std::tuple<HANDLE, std::thread *> *watcherContext, TypedThre
     }
   }
 
+done:
   UnregisterGPNotification(hMachineEvent);
   UnregisterGPNotification(hUserEvent);
   CloseHandle(hExit);
   CloseHandle(hMachineEvent);
   CloseHandle(hUserEvent);
-
-  // Release the thread-safe function
   tsfn.Release();
 }
 
-void StopPolling(Env, std::tuple<HANDLE, std::thread *> *watcherContext, Reference<Value> *ctx)
+void WaitForWatcher(
+    Env,
+    PolicyWatcher *watcher,
+    Reference<Value> *ctx)
 {
-  std::get<1>(*watcherContext)->join();
-  CloseHandle(std::get<0>(*watcherContext));
-  delete std::get<1>(*watcherContext);
-  delete watcherContext;
+  watcher->thread->join();
+  CloseHandle(watcher->hDispose);
+
+  delete watcher->thread;
+  delete watcher;
   delete ctx;
 }
 
 Value DisposeWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
-  auto watcherContext = (std::tuple<HANDLE, std::thread *> *)info.Data();
+  auto watcher = (PolicyWatcher *)info.Data();
 
-  std::cout << "want to dispose" << std::endl;
-  SetEvent(std::get<0>(*watcherContext));
+  if (watcher->hDispose != NULL)
+  {
+    SetEvent(watcher->hDispose);
+    watcher->hDispose = NULL;
+  }
 
   return env.Null();
 }
@@ -137,8 +158,15 @@ Value CreateWatcher(const CallbackInfo &info)
     throw TypeError::New(env, "Expected first arg to be function");
   }
 
+  auto hDispose = CreateEvent(NULL, false, false, NULL);
+
+  if (hDispose == NULL)
+  {
+    throw TypeError::New(env, "Failed to create watcher dispose event");
+  }
+
   auto context = new Reference<Value>(Persistent(info.This()));
-  auto watcherContext = new std::tuple<HANDLE, std::thread *>();
+  auto watcher = new PolicyWatcher();
 
   auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
       env,
@@ -147,14 +175,14 @@ Value CreateWatcher(const CallbackInfo &info)
       0,
       1,
       context,
-      StopPolling,
-      watcherContext);
+      WaitForWatcher,
+      watcher);
 
-  std::get<0>(*watcherContext) = CreateEvent(NULL, false, false, NULL);
-  std::get<1>(*watcherContext) = new std::thread(PollForChanges, watcherContext, tsfn);
+  watcher->hDispose = hDispose;
+  watcher->thread = new std::thread(PollForChanges, watcher, tsfn);
 
   auto result = Object::New(env);
-  result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcherContext));
+  result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcher));
   return result;
 }
 
@@ -163,4 +191,4 @@ Object Init(Env env, Object exports)
   return Function::New(env, CreateWatcher, "createWatcher");
 }
 
-NODE_API_MODULE(clock, Init)
+NODE_API_MODULE(vscodepolicy, Init)
