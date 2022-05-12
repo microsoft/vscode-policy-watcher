@@ -4,14 +4,30 @@
 #include <windows.h>
 #include <userenv.h>
 #include <iostream>
-#include <tuple>
+#include <vector>
 
 using namespace Napi;
 
+struct Policy
+{
+  std::string name;
+  std::string type;
+};
+
 struct PolicyWatcher
 {
+  std::string productName;
+  std::vector<Policy> policies;
   HANDLE hDispose;
   std::thread *thread;
+
+  PolicyWatcher(std::string _productName, std::vector<Policy> _policies, HANDLE _hDispose)
+      : productName(_productName),
+        policies(_policies),
+        hDispose(_hDispose),
+        thread(NULL)
+  {
+  }
 };
 
 void CallJs(
@@ -149,13 +165,55 @@ Value CreateWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
 
-  if (info.Length() < 1)
+  if (info.Length() < 3)
   {
-    throw TypeError::New(env, "Expected 1 argument");
+    throw TypeError::New(env, "Expected 3 arguments");
   }
-  else if (!info[0].IsFunction())
+  else if (!info[0].IsString())
   {
-    throw TypeError::New(env, "Expected first arg to be function");
+    throw TypeError::New(env, "Expected first arg to be string");
+  }
+  else if (!info[1].IsArray())
+  {
+    throw TypeError::New(env, "Expected second arg to be array");
+  }
+  else if (!info[2].IsFunction())
+  {
+    throw TypeError::New(env, "Expected third arg to be function");
+  }
+
+  auto productName = info[0].As<String>();
+  auto rawPolicies = info[1].As<Array>();
+  auto policies = std::vector<Policy>();
+  policies.reserve(rawPolicies.Length());
+
+  for (auto const &item : rawPolicies)
+  {
+    auto value = static_cast<Value>(item.second);
+
+    if (!value.IsObject())
+    {
+      throw TypeError::New(env, "Expected policy to be object");
+    }
+
+    auto rawPolicy = value.As<Object>();
+    auto rawPolicyName = rawPolicy.Get("name");
+
+    if (!rawPolicyName.IsString())
+    {
+      throw TypeError::New(env, "Expected policy name to be string");
+    }
+
+    auto rawPolicyType = rawPolicy.Get("type");
+
+    if (!rawPolicyType.IsString())
+    {
+      throw TypeError::New(env, "Expected policy type to be string");
+    }
+
+    policies.push_back(Policy{
+        std::string(rawPolicyName.As<String>()),
+        std::string(rawPolicyType.As<String>())});
   }
 
   auto hDispose = CreateEvent(NULL, false, false, NULL);
@@ -166,11 +224,11 @@ Value CreateWatcher(const CallbackInfo &info)
   }
 
   auto context = new Reference<Value>(Persistent(info.This()));
-  auto watcher = new PolicyWatcher();
+  auto watcher = new PolicyWatcher(productName, policies, hDispose);
 
   auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
       env,
-      info[0].As<Function>(),
+      info[2].As<Function>(),
       "PolicyWatcher",
       0,
       1,

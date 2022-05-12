@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/node_modules/node-addon-api",
-                "C:\\Users\\jomo\\AppData\\Local\\node-gyp\\Cache\\16.13.1\\include\\node"
+                "C:\\Users\\jomo\\AppData\\Local\\node-gyp\\Cache\\16.14.0\\include\\node"
             ],
             "defines": [
                 "_DEBUG",
