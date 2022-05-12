@@ -6,4 +6,4 @@ const watcher = createWatcher(
   msg => console.log(msg)
 );
 
-setTimeout(() => console.log(watcher.dispose()), 1000);
+setTimeout(() => console.log(watcher.dispose()), 10000);

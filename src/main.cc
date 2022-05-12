@@ -5,28 +5,145 @@
 #include <userenv.h>
 #include <iostream>
 #include <vector>
+#include <list>
 
 using namespace Napi;
 
-struct Policy
+class StringPolicy
 {
+public:
   std::string name;
-  std::string type;
+  std::string value;
+  bool hasValue;
+
+  StringPolicy(const std::string &productName, std::string _name)
+      : name(_name),
+        hasValue(false),
+        registryKey("Software\\Policies\\Microsoft\\" + productName)
+  {
+  }
+
+  bool refresh()
+  {
+    HKEY hKey;
+
+    if (ERROR_SUCCESS != RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey.c_str(), 0, KEY_READ, &hKey))
+    {
+      if (hasValue)
+      {
+        hasValue = false;
+        return true;
+      }
+
+      return false;
+    }
+
+    char buffer[1024];
+    DWORD bufferSize = sizeof(buffer);
+    DWORD type;
+
+    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
+    RegCloseKey(hKey);
+
+    if (ERROR_SUCCESS != readResult)
+    {
+      if (hasValue)
+      {
+        hasValue = false;
+        return true;
+      }
+
+      return false;
+    }
+    else if (type != REG_SZ)
+    {
+      if (hasValue)
+      {
+        hasValue = false;
+        return true;
+      }
+
+      return false;
+    }
+
+    if (hasValue && value == buffer)
+    {
+      return false;
+    }
+
+    hasValue = true;
+    value = buffer;
+    return true;
+  }
+
+private:
+  std::string registryKey;
 };
+
+void CallJs(Env env, Function callback, Reference<Value> *context, std::list<StringPolicy *> *data);
 
 struct PolicyWatcher
 {
-  std::string productName;
-  std::vector<Policy> policies;
+  std::vector<StringPolicy> policies;
   HANDLE hDispose;
   std::thread *thread;
 
-  PolicyWatcher(std::string _productName, std::vector<Policy> _policies, HANDLE _hDispose)
-      : productName(_productName),
-        policies(_policies),
+  PolicyWatcher(std::vector<StringPolicy> _policies, HANDLE _hDispose)
+      : policies(_policies),
         hDispose(_hDispose),
         thread(NULL)
   {
+  }
+
+  void poll(
+      HANDLE *handles,
+      size_t handleSize,
+      TypedThreadSafeFunction<Reference<Value>, std::list<StringPolicy *>, CallJs> &tsfn)
+  {
+    bool first = true;
+
+    while (TRUE)
+    {
+      std::list<StringPolicy *> *updatedPolicies = nullptr;
+
+      for (auto &policy : policies)
+      {
+        if (policy.refresh())
+        {
+          if (updatedPolicies == nullptr)
+          {
+            updatedPolicies = new std::list<StringPolicy *>();
+          }
+
+          updatedPolicies->push_back(&policy);
+        }
+      }
+
+      if (first || (updatedPolicies != nullptr && updatedPolicies->size() > 0))
+      {
+        if (napi_ok != tsfn.BlockingCall(updatedPolicies))
+        {
+          break;
+        }
+      }
+
+      first = false;
+
+      auto dwResult = WaitForMultipleObjects(handleSize, handles, FALSE, INFINITE);
+
+      if ((dwResult == WAIT_FAILED) || ((dwResult - WAIT_OBJECT_0) == 0))
+      {
+        break;
+      }
+
+      std::string *value;
+      auto eventIndex = (dwResult - WAIT_OBJECT_0);
+
+      if (eventIndex == 1) // someone called dispose()
+      {
+        break;
+      }
+    }
   }
 };
 
@@ -34,25 +151,35 @@ void CallJs(
     Env env,
     Function callback,
     Reference<Value> *context,
-    std::string *data)
+    std::list<StringPolicy *> *updatedPolicies)
 {
   if (env != nullptr)
   {
     if (callback != nullptr)
     {
-      callback.Call(context->Value(), {String::New(env, *data)});
+      auto result = Object::New(env);
+
+      if (updatedPolicies != nullptr)
+      {
+        for (auto const &policy : *updatedPolicies)
+        {
+          result.Set(policy->name, policy->hasValue ? Napi::String::New(env, policy->value) : env.Undefined());
+        }
+      }
+
+      callback.Call(context->Value(), {result});
     }
   }
 
-  if (data != nullptr)
+  if (updatedPolicies != nullptr)
   {
-    delete data;
+    delete updatedPolicies;
   }
 }
 
 void PollForChanges(
     PolicyWatcher *watcher,
-    TypedThreadSafeFunction<Reference<Value>, std::string, CallJs> tsfn)
+    TypedThreadSafeFunction<Reference<Value>, std::list<StringPolicy *>, CallJs> tsfn)
 {
   HANDLE hExit = CreateEvent(NULL, false, false, NULL);
 
@@ -85,49 +212,14 @@ void PollForChanges(
     goto done;
   }
 
-  HANDLE hHandles[4] = {
+  HANDLE handles[4] = {
       hExit,
       watcher->hDispose,
       hMachineEvent,
       hUserEvent,
   };
 
-  // auto policyValues = std::unordered_map<std::string,
-
-  // RegQueryValueEx()
-
-  while (TRUE)
-  {
-    auto dwResult = WaitForMultipleObjects(4, hHandles, FALSE, INFINITE);
-
-    if ((dwResult == WAIT_FAILED) || ((dwResult - WAIT_OBJECT_0) == 0))
-    {
-      break;
-    }
-
-    std::string *value;
-    auto eventIndex = (dwResult - WAIT_OBJECT_0);
-
-    if (eventIndex == 1)
-    {
-      break;
-    }
-    else if (eventIndex == 2)
-    {
-      value = new std::string("Machine notify event signaled.");
-    }
-    else
-    {
-      value = new std::string("User notify event signaled.");
-    }
-
-    napi_status status = tsfn.BlockingCall(value);
-
-    if (status != napi_ok)
-    {
-      break;
-    }
-  }
+  watcher->poll(handles, 4, tsfn);
 
 done:
   UnregisterGPNotification(hMachineEvent);
@@ -188,7 +280,7 @@ Value CreateWatcher(const CallbackInfo &info)
 
   auto productName = info[0].As<String>();
   auto rawPolicies = info[1].As<Array>();
-  auto policies = std::vector<Policy>();
+  auto policies = std::vector<StringPolicy>();
   policies.reserve(rawPolicies.Length());
 
   for (auto const &item : rawPolicies)
@@ -215,9 +307,8 @@ Value CreateWatcher(const CallbackInfo &info)
       throw TypeError::New(env, "Expected policy type to be string");
     }
 
-    policies.push_back(Policy{
-        std::string(rawPolicyName.As<String>()),
-        std::string(rawPolicyType.As<String>())});
+    auto policy = StringPolicy(productName, rawPolicyName.As<String>());
+    policies.push_back(policy);
   }
 
   auto hDispose = CreateEvent(NULL, false, false, NULL);
@@ -228,9 +319,9 @@ Value CreateWatcher(const CallbackInfo &info)
   }
 
   auto context = new Reference<Value>(Persistent(info.This()));
-  auto watcher = new PolicyWatcher(productName, policies, hDispose);
+  auto watcher = new PolicyWatcher(policies, hDispose);
 
-  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::string, CallJs>::New(
+  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::list<StringPolicy *>, CallJs>::New(
       env,
       info[2].As<Function>(),
       "PolicyWatcher",
