@@ -92,6 +92,10 @@ void PollForChanges(
       hUserEvent,
   };
 
+  // auto policyValues = std::unordered_map<std::string,
+
+  // RegQueryValueEx()
+
   while (TRUE)
   {
     auto dwResult = WaitForMultipleObjects(4, hHandles, FALSE, INFINITE);
