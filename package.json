@@ -4,12 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node-gyp build",
+    "rebuild": "node-gyp rebuild"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bindings": "^1.5.0",
     "node-addon-api": "*"
+  },
+  "devDependencies": {
+    "node-gyp": "^9.0.0"
   }
 }
