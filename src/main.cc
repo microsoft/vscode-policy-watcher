@@ -29,13 +29,9 @@ public:
 
     if (ERROR_SUCCESS != RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey.c_str(), 0, KEY_READ, &hKey))
     {
-      if (hasValue)
-      {
-        hasValue = false;
-        return true;
-      }
-
-      return false;
+      auto hadValue = hasValue;
+      hasValue = false;
+      return hadValue;
     }
 
     char buffer[1024];
@@ -45,25 +41,11 @@ public:
     auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
     RegCloseKey(hKey);
 
-    if (ERROR_SUCCESS != readResult)
+    if (ERROR_SUCCESS != readResult || type != REG_SZ)
     {
-      if (hasValue)
-      {
-        hasValue = false;
-        return true;
-      }
-
-      return false;
-    }
-    else if (type != REG_SZ)
-    {
-      if (hasValue)
-      {
-        hasValue = false;
-        return true;
-      }
-
-      return false;
+      auto hadValue = hasValue;
+      hasValue = false;
+      return hadValue;
     }
 
     if (hasValue && value == buffer)
@@ -131,15 +113,7 @@ struct PolicyWatcher
 
       auto dwResult = WaitForMultipleObjects(handleSize, handles, FALSE, INFINITE);
 
-      if ((dwResult == WAIT_FAILED) || ((dwResult - WAIT_OBJECT_0) == 0))
-      {
-        break;
-      }
-
-      std::string *value;
-      auto eventIndex = (dwResult - WAIT_OBJECT_0);
-
-      if (eventIndex == 1) // someone called dispose()
+      if (dwResult == WAIT_FAILED || (dwResult - WAIT_OBJECT_0) == 0 || (dwResult - WAIT_OBJECT_0) == 1 /* someone called dispose() */)
       {
         break;
       }
