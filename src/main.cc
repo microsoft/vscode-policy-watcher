@@ -207,14 +207,14 @@ done:
 void WaitForWatcher(
     Env,
     PolicyWatcher *watcher,
-    Reference<Value> *ctx)
+    Reference<Value> *context)
 {
   watcher->thread->join();
   CloseHandle(watcher->hDispose);
 
   delete watcher->thread;
   delete watcher;
-  delete ctx;
+  delete context;
 }
 
 Value DisposeWatcher(const CallbackInfo &info)
