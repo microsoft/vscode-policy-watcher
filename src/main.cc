@@ -275,29 +275,24 @@ Value CreateWatcher(const CallbackInfo &info)
     throw TypeError::New(env, "Expected 3 arguments");
   else if (!info[0].IsString())
     throw TypeError::New(env, "Expected first arg to be string");
-  else if (!info[1].IsArray())
-    throw TypeError::New(env, "Expected second arg to be array");
+  else if (!info[1].IsObject())
+    throw TypeError::New(env, "Expected second arg to be object");
   else if (!info[2].IsFunction())
     throw TypeError::New(env, "Expected third arg to be function");
 
   auto productName = info[0].As<String>();
-  auto rawPolicies = info[1].As<Array>();
+  auto rawPolicies = info[1].As<Object>();
   auto policies = std::vector<std::shared_ptr<Policy>>();
-  policies.reserve(rawPolicies.Length());
 
   for (auto const &item : rawPolicies)
   {
-    auto value = static_cast<Value>(item.second);
+    auto rawPolicyName = item.first.As<String>();
+    auto rawPolicyValue = static_cast<Value>(item.second);
 
-    if (!value.IsObject())
+    if (!rawPolicyValue.IsObject())
       throw TypeError::New(env, "Expected policy to be object");
 
-    auto rawPolicy = value.As<Object>();
-    auto rawPolicyName = rawPolicy.Get("name");
-
-    if (!rawPolicyName.IsString())
-      throw TypeError::New(env, "Expected policy name to be string");
-
+    auto rawPolicy = rawPolicyValue.As<Object>();
     auto rawPolicyType = rawPolicy.Get("type");
 
     if (!rawPolicyType.IsString())
