@@ -6,60 +6,83 @@
 #include <iostream>
 #include <vector>
 #include <list>
+#include <optional>
 
 using namespace Napi;
 
 class StringPolicy
 {
 public:
-  std::string name;
-  std::string value;
-  bool hasValue;
-
-  StringPolicy(const std::string &productName, std::string _name)
-      : name(_name),
-        hasValue(false),
-        registryKey("Software\\Policies\\Microsoft\\" + productName)
+  StringPolicy(const std::string &productName, std::string name)
+      : _name(name),
+        _registryKey("Software\\Policies\\Microsoft\\" + productName)
   {
   }
 
   bool refresh()
   {
+    auto machine = read(HKEY_LOCAL_MACHINE);
+
+    if (_value != machine)
+    {
+      _value = machine;
+      return true;
+    }
+
+    auto user = read(HKEY_CURRENT_USER);
+
+    if (_value != user)
+    {
+      _value = user;
+      return true;
+    }
+
+    return false;
+  }
+
+  std::optional<std::string> read(HKEY root)
+  {
     HKEY hKey;
 
-    if (ERROR_SUCCESS != RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey.c_str(), 0, KEY_READ, &hKey))
+    if (ERROR_SUCCESS != RegOpenKeyEx(root, _registryKey.c_str(), 0, KEY_READ, &hKey))
     {
-      auto hadValue = hasValue;
-      hasValue = false;
-      return hadValue;
+      return std::nullopt;
     }
 
     char buffer[1024];
     DWORD bufferSize = sizeof(buffer);
     DWORD type;
 
-    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
+    auto readResult = RegQueryValueEx(hKey, _name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
     RegCloseKey(hKey);
 
     if (ERROR_SUCCESS != readResult || type != REG_SZ)
     {
-      auto hadValue = hasValue;
-      hasValue = false;
-      return hadValue;
+      return std::nullopt;
     }
 
-    if (hasValue && value == buffer)
+    return std::optional<std::string>{buffer};
+  }
+
+  const std::string &name()
+  {
+    return _name;
+  }
+
+  Napi::Value value(Napi::Env env)
+  {
+    if (!_value.has_value())
     {
-      return false;
+      return env.Undefined();
     }
 
-    hasValue = true;
-    value = buffer;
-    return true;
+    return Napi::String::New(env, _value.value());
   }
 
 private:
-  std::string registryKey;
+  std::string _name;
+  std::optional<std::string> _value;
+  std::string _registryKey;
 };
 
 void CallJs(Env env, Function callback, Reference<Value> *context, std::list<StringPolicy *> *data);
@@ -137,7 +160,7 @@ void CallJs(
       {
         for (auto const &policy : *updatedPolicies)
         {
-          result.Set(policy->name, policy->hasValue ? Napi::String::New(env, policy->value) : env.Undefined());
+          result.Set(policy->name(), policy->value(env));
         }
       }
 

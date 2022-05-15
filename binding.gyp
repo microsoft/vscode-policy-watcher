@@ -9,7 +9,7 @@
                 "<!(node -p \"require('node-addon-api').include_dir\")"
             ],
             'cflags!': ['-fno-exceptions'],
-            'cflags_cc!': ['-fno-exceptions'],
+            'cflags_cc!': ['-fno-exceptions', '-std=c++17'],
             'conditions': [
                 ["OS=='win'", {
                     "defines": [
@@ -24,7 +24,8 @@
                             'AdditionalOptions': [
                                 '/W3',
                                 '/Qspectre',
-                                '/guard:cf'
+                                '/guard:cf',
+                                '-std:c++17'
                             ]
                         },
                         'VCLinkerTool': {
