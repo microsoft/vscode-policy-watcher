@@ -10,12 +10,13 @@
 
 using namespace Napi;
 
-class StringPolicy
+template <typename T>
+class Policy
 {
 public:
-  StringPolicy(const std::string &productName, std::string name)
-      : _name(name),
-        _registryKey("Software\\Policies\\Microsoft\\" + productName)
+  Policy(const std::string &productName, const std::string name)
+      : name(name),
+        registryKey("Software\\Policies\\Microsoft\\" + productName)
   {
   }
 
@@ -40,36 +41,7 @@ public:
     return false;
   }
 
-  std::optional<std::string> read(HKEY root)
-  {
-    HKEY hKey;
-
-    if (ERROR_SUCCESS != RegOpenKeyEx(root, _registryKey.c_str(), 0, KEY_READ, &hKey))
-    {
-      return std::nullopt;
-    }
-
-    char buffer[1024];
-    DWORD bufferSize = sizeof(buffer);
-    DWORD type;
-
-    auto readResult = RegQueryValueEx(hKey, _name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
-    RegCloseKey(hKey);
-
-    if (ERROR_SUCCESS != readResult || type != REG_SZ)
-    {
-      return std::nullopt;
-    }
-
-    return std::optional<std::string>{buffer};
-  }
-
-  const std::string &name()
-  {
-    return _name;
-  }
-
-  Napi::Value value(Napi::Env env)
+  Napi::Value getValue(Napi::Env env)
   {
     if (!_value.has_value())
     {
@@ -79,10 +51,43 @@ public:
     return Napi::String::New(env, _value.value());
   }
 
-private:
-  std::string _name;
-  std::optional<std::string> _value;
-  std::string _registryKey;
+  const std::string name;
+
+protected:
+  const std::string registryKey;
+  std::optional<T> _value;
+
+  virtual std::optional<T> read(HKEY root) = 0;
+};
+
+class StringPolicy : public Policy<std::string>
+{
+  using Policy<std::string>::Policy;
+
+protected:
+  std::optional<std::string> read(HKEY root)
+  {
+    HKEY hKey;
+
+    if (ERROR_SUCCESS != RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &hKey))
+    {
+      return std::nullopt;
+    }
+
+    char buffer[1024];
+    DWORD bufferSize = sizeof(buffer);
+    DWORD type;
+
+    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
+    RegCloseKey(hKey);
+
+    if (ERROR_SUCCESS != readResult || type != REG_SZ)
+    {
+      return std::nullopt;
+    }
+
+    return std::optional<std::string>{buffer};
+  }
 };
 
 void CallJs(Env env, Function callback, Reference<Value> *context, std::list<StringPolicy *> *data);
@@ -160,7 +165,7 @@ void CallJs(
       {
         for (auto const &policy : *updatedPolicies)
         {
-          result.Set(policy->name(), policy->value(env));
+          result.Set(policy->name, policy->getValue(env));
         }
       }
 
