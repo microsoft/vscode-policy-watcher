@@ -134,12 +134,11 @@ struct PolicyWatcher
 {
   std::vector<std::shared_ptr<Policy>> policies;
   HANDLE hDispose;
-  std::thread *thread;
+  std::unique_ptr<std::thread> thread;
 
   PolicyWatcher(std::vector<std::shared_ptr<Policy>> _policies, HANDLE _hDispose)
       : policies(_policies),
-        hDispose(_hDispose),
-        thread(NULL) {}
+        hDispose(_hDispose) {}
 
   void poll(
       HANDLE *handles,
@@ -250,7 +249,6 @@ void WaitForWatcher(
   watcher->thread->join();
   CloseHandle(watcher->hDispose);
 
-  delete watcher->thread;
   delete watcher;
   delete context;
 }
@@ -334,7 +332,7 @@ Value CreateWatcher(const CallbackInfo &info)
       watcher);
 
   watcher->hDispose = hDispose;
-  watcher->thread = new std::thread(PollForChanges, watcher, tsfn);
+  watcher->thread = std::make_unique<std::thread>(PollForChanges, watcher, tsfn);
 
   auto result = Object::New(env);
   result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcher));
