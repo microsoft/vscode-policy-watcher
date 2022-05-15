@@ -14,9 +14,10 @@ template <typename T>
 class Policy
 {
 public:
-  Policy(const std::string &productName, const std::string name)
+  Policy(const std::string &productName, const std::string name, const DWORD regType)
       : name(name),
-        registryKey("Software\\Policies\\Microsoft\\" + productName)
+        registryKey("Software\\Policies\\Microsoft\\" + productName),
+        regType(regType)
   {
   }
 
@@ -55,17 +56,12 @@ public:
 
 protected:
   const std::string registryKey;
+  const DWORD regType;
   std::optional<T> _value;
 
-  virtual std::optional<T> read(HKEY root) = 0;
-};
+  virtual T parseValue(LPBYTE buffer, DWORD bufferSize) = 0;
 
-class StringPolicy : public Policy<std::string>
-{
-  using Policy<std::string>::Policy;
-
-protected:
-  std::optional<std::string> read(HKEY root)
+  std::optional<T> read(HKEY root)
   {
     HKEY hKey;
 
@@ -74,19 +70,34 @@ protected:
       return std::nullopt;
     }
 
-    char buffer[1024];
+    BYTE buffer[1024];
     DWORD bufferSize = sizeof(buffer);
     DWORD type;
 
-    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, (LPBYTE)buffer, &bufferSize);
+    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer, &bufferSize);
     RegCloseKey(hKey);
 
-    if (ERROR_SUCCESS != readResult || type != REG_SZ)
+    if (ERROR_SUCCESS != readResult || type != regType)
     {
       return std::nullopt;
     }
 
-    return std::optional<std::string>{buffer};
+    return std::optional<T>{parseValue(buffer, bufferSize)};
+  }
+};
+
+class StringPolicy : public Policy<std::string>
+{
+public:
+  StringPolicy(const std::string &productName, const std::string name)
+      : Policy(productName, name, REG_SZ)
+  {
+  }
+
+protected:
+  std::string parseValue(LPBYTE buffer, DWORD bufferSize)
+  {
+    return std::string(reinterpret_cast<char *>(buffer), bufferSize - 1);
   }
 };
 
