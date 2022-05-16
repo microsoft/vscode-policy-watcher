@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 #include <napi.h>
 #include <windows.h>
 #include <userenv.h>
@@ -6,127 +11,11 @@
 #include <list>
 #include <optional>
 
+#include "Policy.hh"
+#include "StringPolicy.hh"
+#include "NumberPolicy.hh"
+
 using namespace Napi;
-
-class Policy
-{
-public:
-  virtual bool refresh() = 0;
-  virtual Value getValue(Env env) = 0;
-  const std::string name;
-
-  Policy(const std::string name)
-      : name(name) {}
-};
-
-template <typename T>
-class RegistryPolicy : public Policy
-{
-public:
-  RegistryPolicy(const std::string name, const std::string &productName, const DWORD regType)
-      : Policy(name),
-        registryKey("Software\\Policies\\Microsoft\\" + productName),
-        regType(regType) {}
-
-  bool refresh()
-  {
-    auto machine = read(HKEY_LOCAL_MACHINE);
-
-    if (machine.has_value())
-    {
-      if (value != machine)
-      {
-        value = machine;
-        return true;
-      }
-
-      return false;
-    }
-
-    auto user = read(HKEY_CURRENT_USER);
-
-    if (value != user)
-    {
-      value = user;
-      return true;
-    }
-
-    return false;
-  }
-
-  Value getValue(Env env)
-  {
-    if (!value.has_value())
-      return env.Undefined();
-
-    return getJSValue(env, value.value());
-  }
-
-protected:
-  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize) = 0;
-  virtual Value getJSValue(Env env, T value) = 0;
-
-private:
-  const std::string registryKey;
-  const DWORD regType;
-  std::optional<T> value;
-
-  std::optional<T> read(HKEY root)
-  {
-    HKEY hKey;
-
-    if (ERROR_SUCCESS != RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &hKey))
-      return std::nullopt;
-
-    BYTE buffer[1024];
-    DWORD bufferSize = sizeof(buffer);
-    DWORD type;
-
-    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer, &bufferSize);
-    RegCloseKey(hKey);
-
-    if (ERROR_SUCCESS != readResult || type != regType)
-      return std::nullopt;
-
-    return std::optional<T>{parseRegistryValue(buffer, bufferSize)};
-  }
-};
-
-class StringPolicy : public RegistryPolicy<std::string>
-{
-public:
-  StringPolicy(const std::string name, const std::string &productName)
-      : RegistryPolicy(name, productName, REG_SZ) {}
-
-protected:
-  std::string parseRegistryValue(LPBYTE buffer, DWORD bufferSize)
-  {
-    return std::string(reinterpret_cast<char *>(buffer), bufferSize - 1);
-  }
-
-  Value getJSValue(Env env, std::string value)
-  {
-    return String::New(env, value);
-  }
-};
-
-class NumberPolicy : public RegistryPolicy<long long>
-{
-public:
-  NumberPolicy(const std::string name, const std::string &productName)
-      : RegistryPolicy(name, productName, REG_QWORD) {}
-
-protected:
-  long long parseRegistryValue(LPBYTE buffer, DWORD bufferSize)
-  {
-    return *reinterpret_cast<long long *>(buffer);
-  }
-
-  Value getJSValue(Env env, long long value)
-  {
-    return Number::New(env, value);
-  }
-};
 
 void CallJs(Env env, Function callback, Reference<Value> *context, std::list<std::shared_ptr<Policy>> *data);
 

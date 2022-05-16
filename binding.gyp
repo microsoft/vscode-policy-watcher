@@ -3,7 +3,9 @@
         {
             "target_name": "vscode-policy",
             "sources": [
-                "src/main.cc"
+                "src/main.cc",
+                "src/StringPolicy.cc",
+                "src/NumberPolicy.cc"
             ],
             "include_dirs": [
                 "<!(node -p \"require('node-addon-api').include_dir\")"
