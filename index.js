@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-exports.createWatcher = require('bindings')('vscode-policy');
+exports.createWatcher = require('bindings')('vscode-policy-watcher');
 
 if (require.main === module) {
   exports.createWatcher(

@@ -1,5 +1,5 @@
 {
-  "name": "vscode-policy",
+  "name": "vscode-policy-watcher",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
