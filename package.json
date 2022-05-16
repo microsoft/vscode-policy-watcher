@@ -7,11 +7,12 @@
     "build": "node-gyp build",
     "rebuild": "node-gyp rebuild"
   },
-  "author": "",
+  "author": "João Moreno",
   "license": "MIT",
   "os": [
     "win32"
   ],
+  "types": "index.d.ts",
   "dependencies": {
     "bindings": "^1.5.0",
     "node-addon-api": "*"
