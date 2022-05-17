@@ -4,156 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include <napi.h>
-#include <windows.h>
-#include <userenv.h>
-#include <thread>
 #include <vector>
-#include <list>
-#include <optional>
 
 #include "Policy.hh"
 #include "StringPolicy.hh"
 #include "NumberPolicy.hh"
+#include "PolicyWatcher.hh"
 
 using namespace Napi;
 
-void CallJs(Env env, Function callback, Reference<Value> *context, std::list<const Policy *> *data);
-
-struct PolicyWatcher
-{
-  std::vector<std::unique_ptr<Policy>> policies;
-  HANDLE hDispose;
-  std::unique_ptr<std::thread> thread;
-
-  PolicyWatcher(std::vector<std::unique_ptr<Policy>> _policies, HANDLE _hDispose)
-      : policies(std::move(_policies)),
-        hDispose(_hDispose) {}
-
-  void poll(
-      HANDLE *handles,
-      size_t handleSize,
-      TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs> &tsfn)
-  {
-    bool first = true;
-
-    while (TRUE)
-    {
-      std::list<const Policy *> *updatedPolicies = nullptr;
-
-      for (auto &policy : policies)
-      {
-        if (policy->refresh())
-        {
-          if (updatedPolicies == nullptr)
-            updatedPolicies = new std::list<const Policy *>();
-
-          updatedPolicies->push_back(policy.get());
-        }
-      }
-
-      if (first || (updatedPolicies != nullptr && updatedPolicies->size() > 0))
-        if (napi_ok != tsfn.BlockingCall(updatedPolicies))
-          break;
-
-      first = false;
-
-      auto dwResult = WaitForMultipleObjects(handleSize, handles, FALSE, INFINITE);
-
-      if (dwResult == WAIT_FAILED || (dwResult - WAIT_OBJECT_0) == 0 || (dwResult - WAIT_OBJECT_0) == 1 /* someone called dispose() */)
-        break;
-    }
-  }
-};
-
-void CallJs(
-    Env env,
-    Function callback,
-    Reference<Value> *context,
-    std::list<const Policy *> *updatedPolicies)
-{
-  if (env != nullptr)
-  {
-    if (callback != nullptr)
-    {
-      auto result = Object::New(env);
-
-      if (updatedPolicies != nullptr)
-        for (auto const &policy : *updatedPolicies)
-          result.Set(policy->name, policy->getValue(env));
-
-      callback.Call(context->Value(), {result});
-    }
-  }
-
-  if (updatedPolicies != nullptr)
-    delete updatedPolicies;
-}
-
-void PollForChanges(
-    PolicyWatcher *watcher,
-    TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs> tsfn)
-{
-  HANDLE hExit = CreateEvent(NULL, false, false, NULL);
-
-  if (hExit == NULL)
-    goto done;
-
-  HANDLE hMachineEvent = CreateEvent(NULL, false, false, NULL);
-
-  if (hMachineEvent == NULL)
-    goto done;
-
-  HANDLE hUserEvent = CreateEvent(NULL, false, false, NULL);
-
-  if (hUserEvent == NULL)
-    goto done;
-  else if (!RegisterGPNotification(hMachineEvent, TRUE))
-    goto done;
-  else if (!RegisterGPNotification(hUserEvent, FALSE))
-    goto done;
-
-  HANDLE handles[4] = {
-      hExit,
-      watcher->hDispose,
-      hMachineEvent,
-      hUserEvent,
-  };
-
-  watcher->poll(handles, 4, tsfn);
-
-done:
-  UnregisterGPNotification(hMachineEvent);
-  UnregisterGPNotification(hUserEvent);
-  CloseHandle(hExit);
-  CloseHandle(hMachineEvent);
-  CloseHandle(hUserEvent);
-  tsfn.Release();
-}
-
-void WaitForWatcher(
-    Env,
-    PolicyWatcher *watcher,
-    Reference<Value> *context)
-{
-  watcher->thread->join();
-  CloseHandle(watcher->hDispose);
-
-  delete watcher;
-  delete context;
-}
-
 Value DisposeWatcher(const CallbackInfo &info)
 {
-  auto env = info.Env();
   auto watcher = (PolicyWatcher *)info.Data();
-
-  if (watcher->hDispose != NULL)
-  {
-    SetEvent(watcher->hDispose);
-    watcher->hDispose = NULL;
-  }
-
-  return env.Null();
+  watcher->Dispose();
+  return info.Env().Null();
 }
 
 Value CreateWatcher(const CallbackInfo &info)
@@ -197,26 +61,8 @@ Value CreateWatcher(const CallbackInfo &info)
       throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
   }
 
-  auto hDispose = CreateEvent(NULL, false, false, NULL);
-
-  if (hDispose == NULL)
-    throw TypeError::New(env, "Failed to create watcher dispose event");
-
-  auto context = new Reference<Value>(Persistent(info.This()));
-  auto watcher = new PolicyWatcher(std::move(policies), hDispose);
-
-  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs>::New(
-      env,
-      info[2].As<Function>(),
-      "PolicyWatcher",
-      0,
-      1,
-      context,
-      WaitForWatcher,
-      watcher);
-
-  watcher->hDispose = hDispose;
-  watcher->thread = std::make_unique<std::thread>(PollForChanges, watcher, tsfn);
+  auto watcher = new PolicyWatcher(info[2].As<Function>(), std::move(policies));
+  watcher->Queue();
 
   auto result = Object::New(env);
   result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcher));
