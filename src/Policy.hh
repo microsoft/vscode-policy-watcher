@@ -14,6 +14,7 @@ class Policy
 {
 public:
   virtual bool refresh() = 0;
+  virtual bool hasValue() const = 0;
   virtual Value getValue(Env env) const = 0;
   const std::string name;
 

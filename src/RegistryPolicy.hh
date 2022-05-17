@@ -48,6 +48,11 @@ public:
     return false;
   }
 
+  virtual bool hasValue() const
+  {
+    return value.has_value();
+  }
+
   Value getValue(Env env) const
   {
     if (!value.has_value())

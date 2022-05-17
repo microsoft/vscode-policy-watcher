@@ -9,7 +9,8 @@
 #include <napi.h>
 #include <windows.h>
 #include <userenv.h>
-#include <vector>
+#include <unordered_map>
+#include <mutex>
 #include "Policy.hh"
 
 using namespace Napi;
@@ -17,7 +18,7 @@ using namespace Napi;
 class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
-  PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies);
+  PolicyWatcher(const std::string productName, Function &okCallback);
   ~PolicyWatcher();
 
   void OnExecute(Napi::Env env);
@@ -25,11 +26,17 @@ public:
   void OnOK();
   void OnError();
   void OnProgress(const Policy *const *policies, size_t count);
+  std::vector<const Policy *> RegisterPolicyDefinitions(std::vector<std::unique_ptr<Policy>> &newPolicies);
+  void Update();
   void Dispose();
 
+  const std::string productName;
+
 private:
-  std::vector<std::unique_ptr<Policy>> policies;
-  HANDLE handles[4];
+  std::mutex mutex;
+  std::vector<const Policy *> newPolicies;
+  std::unordered_map<std::string, std::unique_ptr<Policy>> policies;
+  HANDLE handles[5];
 };
 
 #endif

@@ -3,29 +3,27 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-interface Watcher {
-  dispose(): void;
-}
-
 type StringPolicy = { type: "string" };
 type NumberPolicy = { type: "number" };
 
-export interface Policies {
+interface PolicyDefinitions {
   [policyName: string]: StringPolicy | NumberPolicy;
 }
 
-export type PolicyUpdate<T extends Policies> = {
-  [K in keyof T]:
-    | undefined
-    | (T[K] extends StringPolicy
-        ? string
-        : T[K] extends NumberPolicy
-        ? number
-        : never);
+type PolicyValues = {
+  [policyName: string]: string | number | undefined;
 };
 
-export function createWatcher<T extends Policies>(
+type PolicyUpdate = {
+  [policyName: string]: string | number | undefined;
+};
+
+interface Watcher {
+  registerPolicyDefinitions(policies: PolicyDefinitions): Promise<PolicyValues>;
+  dispose(): void;
+}
+
+export function createWatcher(
   productName: string,
-  policies: T,
-  onDidChange: (update: PolicyUpdate<T>) => void
+  onDidChange: (update: PolicyUpdate) => void
 ): Watcher;

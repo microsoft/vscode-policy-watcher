@@ -6,12 +6,18 @@
 exports.createWatcher = require('bindings')('vscode-policy-watcher');
 
 if (require.main === module) {
-  exports.createWatcher(
-    'CodeOSS',
-    {
-      UpdateMode: { type: 'string' },
-      SCMInputFontSize: { type: 'number' },
-    },
-    msg => console.log(msg)
-  );
+  (async () => {
+    const watcher = exports.createWatcher(
+      'CodeOSS',
+      msg => console.log('event', msg)
+    );
+
+    console.log('register', await watcher.registerPolicyDefinitions({ UpdateMode: { type: 'string' } }));
+    console.log('register', await watcher.registerPolicyDefinitions({ SCMInputFontSize: { type: 'number' } }));
+    console.log('register', await watcher.registerPolicyDefinitions({ SCMInputFontSize: { type: 'number' } }));
+    console.log('register', await watcher.registerPolicyDefinitions({ SCMInputFontSize: { type: 'number' } }));
+
+    setTimeout(() => watcher.dispose(), 60000);
+  })();
+
 }

@@ -7,9 +7,9 @@
 
 using namespace Napi;
 
-PolicyWatcher::PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies)
+PolicyWatcher::PolicyWatcher(const std::string productName, Function &okCallback)
     : AsyncProgressQueueWorker(okCallback),
-      policies(std::move(_policies))
+      productName(productName)
 {
 }
 
@@ -21,6 +21,7 @@ PolicyWatcher::~PolicyWatcher()
   CloseHandle(handles[1]);
   CloseHandle(handles[2]);
   CloseHandle(handles[3]);
+  CloseHandle(handles[4]);
 }
 
 void PolicyWatcher::OnExecute(Napi::Env env)
@@ -33,6 +34,8 @@ void PolicyWatcher::OnExecute(Napi::Env env)
     return SetError("Failed to create machine GP event");
   if ((handles[3] = CreateEvent(NULL, false, false, NULL)) == NULL)
     return SetError("Failed to create user GP event");
+  if ((handles[4] = CreateEvent(NULL, false, false, NULL)) == NULL)
+    return SetError("Failed to create policy registration event");
   if (!RegisterGPNotification(handles[2], TRUE))
     return SetError("Failed to register machine GP event");
   if (!RegisterGPNotification(handles[3], FALSE))
@@ -43,26 +46,28 @@ void PolicyWatcher::OnExecute(Napi::Env env)
 
 void PolicyWatcher::Execute(const ExecutionProgress &progress)
 {
-  bool first = true;
-
   while (TRUE)
   {
     std::vector<const Policy *> updatedPolicies;
 
-    for (auto &policy : policies)
-    {
-      if (policy->refresh())
-      {
-        updatedPolicies.push_back(policy.get());
-      }
-    }
+    mutex.lock();
 
-    if (first || updatedPolicies.size() > 0)
+    for (auto &policy : newPolicies)
+      if (policy->hasValue())
+        updatedPolicies.push_back(policy);
+
+    newPolicies.clear();
+
+    for (auto &pair : policies)
+      if (pair.second->refresh())
+        updatedPolicies.push_back(pair.second.get());
+
+    mutex.unlock();
+
+    if (updatedPolicies.size() > 0)
       progress.Send(&updatedPolicies[0], updatedPolicies.size());
 
-    first = false;
-
-    auto dwResult = WaitForMultipleObjects(4, handles, FALSE, INFINITE);
+    auto dwResult = WaitForMultipleObjects(5, handles, FALSE, INFINITE);
 
     if (dwResult == WAIT_FAILED || (dwResult - WAIT_OBJECT_0) == 0 || (dwResult - WAIT_OBJECT_0) == 1 /* someone called dispose() */)
       break;
@@ -81,6 +86,37 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
     result.Set(policies[i]->name, policies[i]->getValue(env));
 
   Callback().Call(Receiver().Value(), {result});
+}
+
+std::vector<const Policy *> PolicyWatcher::RegisterPolicyDefinitions(std::vector<std::unique_ptr<Policy>> &_policies)
+{
+  std::vector<const Policy *> result;
+
+  mutex.lock();
+
+  for (auto &policy : _policies)
+  {
+    if (!policies[policy->name])
+    {
+      policy->refresh();
+
+      if (policy->hasValue())
+      {
+        result.push_back(policy.get());
+        newPolicies.push_back(policy.get());
+      }
+
+      policies[policy->name] = std::move(policy);
+    }
+  }
+
+  mutex.unlock();
+  return result;
+}
+
+void PolicyWatcher::Update()
+{
+  SetEvent(handles[4]);
 }
 
 void PolicyWatcher::Dispose()

@@ -6,7 +6,8 @@
                 "src/main.cc",
                 "src/StringPolicy.cc",
                 "src/NumberPolicy.cc",
-                "src/PolicyWatcher.cc"
+                "src/PolicyWatcher.cc",
+                "src/PolicyRegisterer.cc"
             ],
             "include_dirs": [
                 "<!(node -p \"require('node-addon-api').include_dir\")"
