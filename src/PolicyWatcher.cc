@@ -8,7 +8,7 @@
 using namespace Napi;
 
 PolicyWatcher::PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies)
-    : AsyncProgressWorker(okCallback),
+    : AsyncProgressQueueWorker(okCallback),
       policies(std::move(_policies))
 {
 }
@@ -51,7 +51,7 @@ void PolicyWatcher::OnExecute(Napi::Env env)
   if (!RegisterGPNotification(handles[3], FALSE))
     return SetError("Failed to register user GP event");
 
-  AsyncProgressWorker::OnExecute(env);
+  AsyncProgressQueueWorker::OnExecute(env);
 }
 
 void PolicyWatcher::Execute(const ExecutionProgress &progress)

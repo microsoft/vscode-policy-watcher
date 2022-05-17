@@ -14,7 +14,7 @@
 
 using namespace Napi;
 
-class PolicyWatcher : public AsyncProgressWorker<const Policy *>
+class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
   PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies);
