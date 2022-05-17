@@ -88,8 +88,6 @@ void PolicyWatcher::OnError() {}
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 {
   auto env = Env();
-  // HandleScope scope(env);s
-
   auto result = Object::New(env);
 
   for (size_t i = 0; i < count; i++)
