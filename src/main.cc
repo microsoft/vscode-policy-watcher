@@ -17,37 +17,37 @@
 
 using namespace Napi;
 
-void CallJs(Env env, Function callback, Reference<Value> *context, std::list<std::shared_ptr<Policy>> *data);
+void CallJs(Env env, Function callback, Reference<Value> *context, std::list<const Policy *> *data);
 
 struct PolicyWatcher
 {
-  std::vector<std::shared_ptr<Policy>> policies;
+  std::vector<std::unique_ptr<Policy>> policies;
   HANDLE hDispose;
   std::unique_ptr<std::thread> thread;
 
-  PolicyWatcher(std::vector<std::shared_ptr<Policy>> _policies, HANDLE _hDispose)
-      : policies(_policies),
+  PolicyWatcher(std::vector<std::unique_ptr<Policy>> _policies, HANDLE _hDispose)
+      : policies(std::move(_policies)),
         hDispose(_hDispose) {}
 
   void poll(
       HANDLE *handles,
       size_t handleSize,
-      TypedThreadSafeFunction<Reference<Value>, std::list<std::shared_ptr<Policy>>, CallJs> &tsfn)
+      TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs> &tsfn)
   {
     bool first = true;
 
     while (TRUE)
     {
-      std::list<std::shared_ptr<Policy>> *updatedPolicies = nullptr;
+      std::list<const Policy *> *updatedPolicies = nullptr;
 
       for (auto &policy : policies)
       {
         if (policy->refresh())
         {
           if (updatedPolicies == nullptr)
-            updatedPolicies = new std::list<std::shared_ptr<Policy>>();
+            updatedPolicies = new std::list<const Policy *>();
 
-          updatedPolicies->push_back(policy);
+          updatedPolicies->push_back(policy.get());
         }
       }
 
@@ -69,7 +69,7 @@ void CallJs(
     Env env,
     Function callback,
     Reference<Value> *context,
-    std::list<std::shared_ptr<Policy>> *updatedPolicies)
+    std::list<const Policy *> *updatedPolicies)
 {
   if (env != nullptr)
   {
@@ -91,7 +91,7 @@ void CallJs(
 
 void PollForChanges(
     PolicyWatcher *watcher,
-    TypedThreadSafeFunction<Reference<Value>, std::list<std::shared_ptr<Policy>>, CallJs> tsfn)
+    TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs> tsfn)
 {
   HANDLE hExit = CreateEvent(NULL, false, false, NULL);
 
@@ -171,7 +171,7 @@ Value CreateWatcher(const CallbackInfo &info)
 
   auto productName = info[0].As<String>();
   auto rawPolicies = info[1].As<Object>();
-  auto policies = std::vector<std::shared_ptr<Policy>>();
+  auto policies = std::vector<std::unique_ptr<Policy>>();
 
   for (auto const &item : rawPolicies)
   {
@@ -190,9 +190,9 @@ Value CreateWatcher(const CallbackInfo &info)
     auto policyType = std::string(rawPolicyType.As<String>());
 
     if (policyType == "string")
-      policies.push_back(std::make_shared<StringPolicy>(rawPolicyName.As<String>(), productName));
+      policies.push_back(std::make_unique<StringPolicy>(rawPolicyName.As<String>(), productName));
     else if (policyType == "number")
-      policies.push_back(std::make_shared<NumberPolicy>(rawPolicyName.As<String>(), productName));
+      policies.push_back(std::make_unique<NumberPolicy>(rawPolicyName.As<String>(), productName));
     else
       throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
   }
@@ -203,9 +203,9 @@ Value CreateWatcher(const CallbackInfo &info)
     throw TypeError::New(env, "Failed to create watcher dispose event");
 
   auto context = new Reference<Value>(Persistent(info.This()));
-  auto watcher = new PolicyWatcher(policies, hDispose);
+  auto watcher = new PolicyWatcher(std::move(policies), hDispose);
 
-  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::list<std::shared_ptr<Policy>>, CallJs>::New(
+  auto tsfn = TypedThreadSafeFunction<Reference<Value>, std::list<const Policy *>, CallJs>::New(
       env,
       info[2].As<Function>(),
       "PolicyWatcher",

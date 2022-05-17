@@ -48,7 +48,7 @@ public:
     return false;
   }
 
-  Value getValue(Env env)
+  Value getValue(Env env) const
   {
     if (!value.has_value())
       return env.Undefined();
@@ -57,8 +57,8 @@ public:
   }
 
 protected:
-  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize) = 0;
-  virtual Value getJSValue(Env env, T value) = 0;
+  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize) const = 0;
+  virtual Value getJSValue(Env env, T value) const = 0;
 
 private:
   const std::string registryKey;

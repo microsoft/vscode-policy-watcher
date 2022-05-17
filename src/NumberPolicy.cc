@@ -10,12 +10,12 @@ using namespace Napi;
 NumberPolicy::NumberPolicy(const std::string name, const std::string &productName)
     : RegistryPolicy(name, productName, REG_SZ) {}
 
-long long NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize)
+long long NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize) const
 {
   return *reinterpret_cast<long long *>(buffer);
 }
 
-Value NumberPolicy::getJSValue(Env env, long long value)
+Value NumberPolicy::getJSValue(Env env, long long value) const
 {
   return Number::New(env, value);
 }
