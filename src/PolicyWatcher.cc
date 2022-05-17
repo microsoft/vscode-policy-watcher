@@ -25,29 +25,16 @@ PolicyWatcher::~PolicyWatcher()
 
 void PolicyWatcher::OnExecute(Napi::Env env)
 {
-  handles[0] = CreateEvent(NULL, false, false, NULL);
-
-  if (handles[0] == NULL)
+  if ((handles[0] = CreateEvent(NULL, false, false, NULL)) == NULL)
     return SetError("Failed to create exit event");
-
-  handles[1] = CreateEvent(NULL, false, false, NULL);
-
-  if (handles[1] == NULL)
+  if ((handles[1] = CreateEvent(NULL, false, false, NULL)) == NULL)
     return SetError("Failed to create dispose event");
-
-  handles[2] = CreateEvent(NULL, false, false, NULL);
-
-  if (handles[2] == NULL)
+  if ((handles[2] = CreateEvent(NULL, false, false, NULL)) == NULL)
     return SetError("Failed to create machine GP event");
-
-  handles[3] = CreateEvent(NULL, false, false, NULL);
-
-  if (handles[3] == NULL)
+  if ((handles[3] = CreateEvent(NULL, false, false, NULL)) == NULL)
     return SetError("Failed to create user GP event");
-
   if (!RegisterGPNotification(handles[2], TRUE))
     return SetError("Failed to register machine GP event");
-
   if (!RegisterGPNotification(handles[3], FALSE))
     return SetError("Failed to register user GP event");
 
