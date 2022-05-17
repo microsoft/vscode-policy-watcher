@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "PolicyRegisterer.hh"
+#include <iostream>
 
 using namespace Napi;
 

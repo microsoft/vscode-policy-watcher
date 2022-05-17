@@ -26,8 +26,19 @@ public:
   void OnOK();
   void OnError();
   void OnProgress(const Policy *const *policies, size_t count);
+
+  /**
+   * Add new policy definitions to watch for. Returns the subset of new policies
+   * which have a value.
+   */
   std::vector<const Policy *> RegisterPolicyDefinitions(std::vector<std::unique_ptr<Policy>> &newPolicies);
+
+  /**
+   * Force a new cycle on the Execute event loop. Called after resolving the promise
+   * from registering policy definitions.
+   */
   void Update();
+
   void Dispose();
 
   const std::string productName;
