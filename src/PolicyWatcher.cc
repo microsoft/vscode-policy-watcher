@@ -74,11 +74,11 @@ void PolicyWatcher::OnError() {}
 
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 {
-  auto env = Env();
-  auto result = Object::New(env);
+  HandleScope scope(Env());
+  auto result = Object::New(Env());
 
   for (size_t i = 0; i < count; i++)
-    result.Set(policies[i]->name, policies[i]->getValue(env));
+    result.Set(policies[i]->name, policies[i]->getValue(Env()));
 
   Callback().Call(Receiver().Value(), {result});
 }

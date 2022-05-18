@@ -12,7 +12,7 @@
                 "<!(node -p \"require('node-addon-api').include_dir\")"
             ],
             'cflags!': ['-fno-exceptions'],
-            'cflags_cc!': ['-fno-exceptions', '-std=c++17'],
+            'cflags_cc!': ['-fno-exceptions'],
             'conditions': [
                 ["OS=='win'", {
                     "defines": [
@@ -36,17 +36,6 @@
                                 '/guard:cf'
                             ]
                         }
-                    },
-                }],
-                ["OS=='mac'", {
-                    'cflags+': ['-fvisibility=hidden'],
-                    'xcode_settings': {
-                        'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
-                    },
-                    'xcode_settings': {
-                        'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
-                        'CLANG_CXX_LIBRARY': 'libc++',
-                        'MACOSX_DEPLOYMENT_TARGET': '10.7',
                     },
                 }],
             ],
