@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "node-gyp build",
-    "rebuild": "node-gyp rebuild"
+    "rebuild": "node-gyp rebuild",
+    "prepare": "husky install"
   },
   "author": "João Moreno",
   "license": "MIT",
@@ -18,7 +19,20 @@
     "node-addon-api": "*"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0",
+    "husky": "^8.0.1",
     "node-gyp": "^9.0.0",
     "semantic-release": "^19.0.2"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
   }
 }
