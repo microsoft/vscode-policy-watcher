@@ -19,12 +19,7 @@ PolicyWatcher::~PolicyWatcher()
 
 void PolicyWatcher::AddStringPolicy(const std::string name) {}
 void PolicyWatcher::AddNumberPolicy(const std::string name) {}
-
-void PolicyWatcher::OnExecute(Napi::Env env)
-{
-  return SetError("Not supported");
-}
-
+void PolicyWatcher::OnExecute(Napi::Env env) {}
 void PolicyWatcher::Execute(const ExecutionProgress &progress) {}
 void PolicyWatcher::OnOK() {}
 void PolicyWatcher::OnError() {}
