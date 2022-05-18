@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     tags: [v*]
   pull_request:
     branches: [main]
@@ -18,3 +18,7 @@ jobs:
         with:
           node-version: 16
       - run: npm install
+      - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
