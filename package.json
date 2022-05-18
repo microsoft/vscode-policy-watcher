@@ -18,6 +18,7 @@
     "node-addon-api": "*"
   },
   "devDependencies": {
-    "node-gyp": "^9.0.0"
+    "node-gyp": "^9.0.0",
+    "semantic-release": "^19.0.2"
   }
 }
