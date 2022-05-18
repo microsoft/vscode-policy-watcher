@@ -1,5 +1,6 @@
 .github
 .vscode
+.husky
 build
 CODE_OF_CONDUCT.md
 SECURITY.md
