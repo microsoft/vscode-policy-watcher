@@ -7,8 +7,6 @@
 #include <vector>
 
 #include "Policy.hh"
-#include "StringPolicy.hh"
-#include "NumberPolicy.hh"
 #include "PolicyWatcher.hh"
 
 using namespace Napi;
@@ -24,6 +22,10 @@ Value CreateWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
 
+#ifndef WINDOWS
+  throw TypeError::New(env, "Unsupported platform");
+#endif
+
   if (info.Length() < 3)
     throw TypeError::New(env, "Expected 3 arguments");
   else if (!info[0].IsString())
@@ -33,9 +35,9 @@ Value CreateWatcher(const CallbackInfo &info)
   else if (!info[2].IsFunction())
     throw TypeError::New(env, "Expected third arg to be function");
 
-  auto productName = info[0].As<String>();
   auto rawPolicies = info[1].As<Object>();
   auto policies = std::vector<std::unique_ptr<Policy>>();
+  auto watcher = new PolicyWatcher(info[0].As<String>(), info[2].As<Function>());
 
   for (auto const &item : rawPolicies)
   {
@@ -54,14 +56,13 @@ Value CreateWatcher(const CallbackInfo &info)
     auto policyType = std::string(rawPolicyType.As<String>());
 
     if (policyType == "string")
-      policies.push_back(std::make_unique<StringPolicy>(rawPolicyName.As<String>(), productName));
+      watcher->AddStringPolicy(rawPolicyName.As<String>());
     else if (policyType == "number")
-      policies.push_back(std::make_unique<NumberPolicy>(rawPolicyName.As<String>(), productName));
+      watcher->AddNumberPolicy(rawPolicyName.As<String>());
     else
       throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
   }
 
-  auto watcher = new PolicyWatcher(info[2].As<Function>(), std::move(policies));
   watcher->Queue();
 
   auto result = Object::New(env);
