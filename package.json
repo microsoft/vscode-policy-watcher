@@ -10,9 +10,6 @@
   },
   "author": "João Moreno",
   "license": "MIT",
-  "os": [
-    "win32"
-  ],
   "types": "index.d.ts",
   "dependencies": {
     "bindings": "^1.5.0",

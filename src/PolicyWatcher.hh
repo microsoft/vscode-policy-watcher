@@ -7,18 +7,23 @@
 #define POLICY_WATCHER_H
 
 #include <napi.h>
-#include <windows.h>
-#include <userenv.h>
 #include <vector>
 #include "Policy.hh"
+
+#ifdef WINDOWS
+#include <windows.h>
+#endif
 
 using namespace Napi;
 
 class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
-  PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies);
+  PolicyWatcher(std::string productName, Function &okCallback);
   ~PolicyWatcher();
+
+  void AddStringPolicy(const std::string name);
+  void AddNumberPolicy(const std::string name);
 
   void OnExecute(Napi::Env env);
   void Execute(const ExecutionProgress &progress);
@@ -27,9 +32,13 @@ public:
   void OnProgress(const Policy *const *policies, size_t count);
   void Dispose();
 
-private:
+protected:
+  std::string productName;
   std::vector<std::unique_ptr<Policy>> policies;
+
+#ifdef WINDOWS
   HANDLE handles[4];
+#endif
 };
 
 #endif

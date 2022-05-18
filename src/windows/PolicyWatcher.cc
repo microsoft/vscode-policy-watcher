@@ -3,13 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-#include "PolicyWatcher.hh"
+#include <userenv.h>
+
+#include "../PolicyWatcher.hh"
+#include "StringPolicy.hh"
+#include "NumberPolicy.hh"
 
 using namespace Napi;
 
-PolicyWatcher::PolicyWatcher(Function &okCallback, std::vector<std::unique_ptr<Policy>> _policies)
+PolicyWatcher::PolicyWatcher(std::string productName, Function &okCallback)
     : AsyncProgressQueueWorker(okCallback),
-      policies(std::move(_policies))
+      productName(productName)
 {
 }
 
@@ -21,6 +25,16 @@ PolicyWatcher::~PolicyWatcher()
   CloseHandle(handles[1]);
   CloseHandle(handles[2]);
   CloseHandle(handles[3]);
+}
+
+void PolicyWatcher::AddStringPolicy(const std::string name)
+{
+  policies.push_back(std::make_unique<StringPolicy>(name, productName));
+}
+
+void PolicyWatcher::AddNumberPolicy(const std::string name)
+{
+  policies.push_back(std::make_unique<NumberPolicy>(name, productName));
 }
 
 void PolicyWatcher::OnExecute(Napi::Env env)
