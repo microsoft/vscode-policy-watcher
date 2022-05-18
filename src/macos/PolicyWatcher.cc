@@ -9,7 +9,7 @@
 
 using namespace Napi;
 
-PolicyWatcher::PolicyWatcher(std::string productName, Function &okCallback)
+PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
     : AsyncProgressQueueWorker(okCallback),
       productName(productName)
 {

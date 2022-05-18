@@ -19,7 +19,7 @@ using namespace Napi;
 class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
-  PolicyWatcher(std::string productName, Function &okCallback);
+  PolicyWatcher(std::string productName, const Function &okCallback);
   ~PolicyWatcher();
 
   void AddStringPolicy(const std::string name);
