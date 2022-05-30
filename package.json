@@ -1,12 +1,16 @@
 {
   "name": "vscode-policy-watcher",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "build": "node-gyp build",
     "rebuild": "node-gyp rebuild",
     "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/vscode-policy-watcher.git"
   },
   "author": "João Moreno",
   "license": "MIT",
