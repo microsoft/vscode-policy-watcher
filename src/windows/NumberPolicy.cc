@@ -17,5 +17,5 @@ long long NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize) cons
 
 Value NumberPolicy::getJSValue(Env env, long long value) const
 {
-  return Number::New(env, (double)value);
+  return Number::New(env, static_cast<double>(value));
 }
