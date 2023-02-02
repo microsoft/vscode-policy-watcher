@@ -55,8 +55,10 @@
                                 '/W3',
                                 '/Qspectre',
                                 '/guard:cf',
-                                '-std:c++17'
-                            ]
+                                '-std:c++17',
+                                '/w34244',
+                                '/w34267'
+                            ],
                         },
                         'VCLinkerTool': {
                             'AdditionalOptions': [
