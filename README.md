@@ -1,5 +1,7 @@
 # vscode-policy-watcher
 
+[![Build Status](https://dev.azure.com/monacotools/Monaco/_apis/build/status/npm/vscode/policy-watcher?repoName=microsoft%2Fvscode-policy-watcher&branchName=main)](https://dev.azure.com/monacotools/Monaco/_build/latest?definitionId=459&repoName=microsoft%2Fvscode-policy-watcher&branchName=main)
+
 Example usage:
 
 ```js

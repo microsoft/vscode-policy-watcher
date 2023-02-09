@@ -27,4 +27,13 @@ extends:
         buildSteps:
           - script: npm ci
           - script: npm run build
+        testPlatforms:
+          - name: Linux
+            nodeVersions: [16.x, 18.x]
+          - name: MacOS
+            nodeVersions: [16.x, 18.x]
+          - name: Windows
+            nodeVersions: [16.x, 18.x]
+        testSteps:
+          - script: npm ci
         publishPackage: ${{ parameters.publishPackage }}
