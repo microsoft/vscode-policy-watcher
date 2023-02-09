@@ -1,0 +1,30 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr: [main]
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: microsoft/vscode-engineering
+      ref: main
+      endpoint: Monaco
+
+parameters:
+  - name: publishPackage
+    displayName: 🚀 Publish
+    type: boolean
+    default: false
+
+extends:
+  template: azure-pipelines/npm-package/pipeline.yml@templates
+  parameters:
+    npmPackages:
+      - name: vsce
+        buildSteps:
+          - script: npm ci
+          - script: npm run build
+        publishPackage: ${{ parameters.publishPackage }}
