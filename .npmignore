@@ -1,6 +1,5 @@
-.github
+azure-pipelines.yml
 .vscode
-.husky
 build
 CODE_OF_CONDUCT.md
 SECURITY.md
