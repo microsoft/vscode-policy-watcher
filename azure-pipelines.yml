@@ -35,6 +35,5 @@ extends:
           - name: Windows
             nodeVersions: [16.x, 18.x]
         testSteps:
-          - script: npm config list
           - script: npm ci
         publishPackage: ${{ parameters.publishPackage }}
