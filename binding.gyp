@@ -53,7 +53,8 @@
                             "ExceptionHandling": 1,
                             'AdditionalOptions': [
                                 '/Qspectre',
-                                '/guard:cf'
+                                '/guard:cf',
+                                '-std:c++17'
                             ],
                         },
                         'VCLinkerTool': {
