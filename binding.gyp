@@ -52,12 +52,9 @@
                         "VCCLCompilerTool": {
                             "ExceptionHandling": 1,
                             'AdditionalOptions': [
-                                '/W3',
                                 '/Qspectre',
                                 '/guard:cf',
-                                '-std:c++17',
-                                '/w34244',
-                                '/w34267'
+                                '-std:c++17'
                             ],
                         },
                         'VCLinkerTool': {
