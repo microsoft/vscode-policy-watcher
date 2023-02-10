@@ -39,5 +39,5 @@ extends:
             env:
               npm_config_arch: ia32
         testSteps:
-          - script: npm ci
+          - script: npm ci --verbose
         publishPackage: ${{ parameters.publishPackage }}
