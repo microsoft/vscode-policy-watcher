@@ -10,7 +10,7 @@ resources:
     - repository: templates
       type: github
       name: microsoft/vscode-engineering
-      ref: joao/cheerful-cockroach
+      ref: main
       endpoint: Monaco
 
 parameters:
@@ -34,10 +34,6 @@ extends:
             nodeVersions: [16.x, 18.x]
           - name: Windows
             nodeVersions: [16.x, 18.x]
-          - name: Windows32
-            nodeVersions: [16.x, 18.x]
-            env:
-              npm_config_arch: ia32
         testSteps:
           - script: npm config list
           - script: npm ci
