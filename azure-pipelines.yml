@@ -10,7 +10,7 @@ resources:
     - repository: templates
       type: github
       name: microsoft/vscode-engineering
-      ref: main
+      ref: joao/prospective-bug
       endpoint: Monaco
 
 parameters:
@@ -34,6 +34,9 @@ extends:
             nodeVersions: [16.x, 18.x]
           - name: Windows
             nodeVersions: [16.x, 18.x]
+          - name: Windows32
+            nodeVersions: [16.x, 18.x]
+            force32bitNode: true
         testSteps:
           - script: npm ci
         publishPackage: ${{ parameters.publishPackage }}
