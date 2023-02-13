@@ -29,14 +29,19 @@ extends:
           - script: npm run build
         testPlatforms:
           - name: Linux
-            nodeVersions: [16.x, 18.x]
+            nodeVersions: [16.x]
           - name: MacOS
-            nodeVersions: [16.x, 18.x]
+            nodeVersions: [16.x]
           - name: Windows
-            nodeVersions: [16.x, 18.x]
+            nodeVersions: [16.x]
           - name: Windows32
-            nodeVersions: [16.x, 18.x]
+            nodeVersions: [16.x]
             force32bitNode: true
         testSteps:
           - script: npm ci
+            env:
+              npm_config_disturl: https://electronjs.org/headers
+              npm_config_target: 19.1.9
+              npm_config_runtime: electron
+              npm_config_build_from_source: true
         publishPackage: ${{ parameters.publishPackage }}
