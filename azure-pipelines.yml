@@ -26,7 +26,6 @@ extends:
       - name: vsce
         buildSteps:
           - script: npm ci
-          - script: npm run build
         testPlatforms:
           - name: Linux
             nodeVersions: [16.x]
