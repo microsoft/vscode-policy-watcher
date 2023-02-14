@@ -54,7 +54,10 @@
                             'AdditionalOptions': [
                                 '/Qspectre',
                                 '/guard:cf',
-                                '-std:c++17'
+                                '-std:c++17',
+                                '/w34244',
+                                '/w34267',
+                                '/ZH:SHA_256'
                             ],
                         },
                         'VCLinkerTool': {
