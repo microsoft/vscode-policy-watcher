@@ -45,3 +45,8 @@ extends:
               npm_config_runtime: electron
               npm_config_build_from_source: true
         publishPackage: ${{ parameters.publishPackage }}
+        postPublishSteps:
+          - script: |
+              set -e
+              echo $(PACKAGE_VERSION)
+              echo $(PACKAGE_SPEC)
