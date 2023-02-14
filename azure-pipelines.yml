@@ -10,7 +10,7 @@ resources:
     - repository: templates
       type: github
       name: microsoft/vscode-engineering
-      ref: main
+      ref: joao/lively-piranha
       endpoint: Monaco
 
 parameters:
@@ -24,6 +24,7 @@ extends:
   parameters:
     npmPackages:
       - name: vsce
+        publishRequiresApproval: false
         buildSteps:
           - script: npm ci
         testPlatforms:
