@@ -48,11 +48,13 @@
                     "libraries": [
                         "userenv.lib"
                     ],
+                    "msvs_configuration_attributes": {
+                        "SpectreMitigation": "Spectre"
+                    },
                     "msvs_settings": {
                         "VCCLCompilerTool": {
                             "ExceptionHandling": 1,
                             'AdditionalOptions': [
-                                '/Qspectre',
                                 '/guard:cf',
                                 '-std:c++17',
                                 '/we4244',
