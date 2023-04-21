@@ -83,9 +83,6 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
   }
 }
 
-void PolicyWatcher::OnOK() {}
-void PolicyWatcher::OnError() {}
-
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 {
   HandleScope scope(Env());
