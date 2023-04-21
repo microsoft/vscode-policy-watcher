@@ -27,8 +27,6 @@ public:
 
   void OnExecute(Napi::Env env);
   void Execute(const ExecutionProgress &progress);
-  void OnOK();
-  void OnError();
   void OnProgress(const Policy *const *policies, size_t count);
   void Dispose();
 
