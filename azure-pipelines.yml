@@ -28,14 +28,11 @@ extends:
           - script: npm ci
         testPlatforms:
           - name: Linux
-            nodeVersions: [16.x]
+            nodeVersions: [18.17.x]
           - name: MacOS
-            nodeVersions: [16.x]
+            nodeVersions: [18.17.x]
           - name: Windows
-            nodeVersions: [16.x]
-          - name: Windows32
-            nodeVersions: [16.x]
-            force32bitNode: true
+            nodeVersions: [18.17.x]
         testSteps:
           - script: npm ci
             env:
