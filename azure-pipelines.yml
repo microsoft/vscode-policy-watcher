@@ -25,6 +25,9 @@ extends:
     npmPackages:
       - name: vscode-policy-watcher
         buildSteps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
           - script: npm ci
         testPlatforms:
           - name: Linux
@@ -34,6 +37,9 @@ extends:
           - name: Windows
             nodeVersions: [18.17.x]
         testSteps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
           - script: npm ci
             env:
               npm_config_disturl: https://electronjs.org/headers
