@@ -46,4 +46,6 @@ extends:
               npm_config_target: 19.1.9
               npm_config_runtime: electron
               npm_config_build_from_source: true
+        apiScanSoftwareName: 'vscode-policy-watcher'
+        apiScanSoftwareVersion: '1.1'
         publishPackage: ${{ parameters.publishPackage }}
