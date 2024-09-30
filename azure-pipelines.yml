@@ -19,6 +19,10 @@ parameters:
     type: boolean
     default: false
 
+variables:
+  - name: Codeql.Language
+    value: javascript,cpp
+
 extends:
   template: azure-pipelines/npm-package/pipeline.yml@templates
   parameters:
