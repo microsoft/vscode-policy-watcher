@@ -28,22 +28,66 @@ extends:
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.11'
+          - script: |
+              set -e
+              includes=$(cat << 'EOF'
+              {
+                "target_defaults": {
+                  "conditions": [
+                    ["OS=='linux'", {
+                      'cflags_cc!': [ '-std=gnu++20' ],
+                      'cflags_cc': [ '-std=gnu++2a' ],
+                    }]
+                  ]
+                }
+              }
+              EOF
+              )
+              if [ ! -d "$HOME/.gyp" ]; then
+                mkdir -p "$HOME/.gyp"
+              fi
+              echo "$includes" > "$HOME/.gyp/include.gypi"
+            displayName: Override gnu target for older sysroot
+            condition: eq(variables['Agent.OS'], 'Linux')
+
           - script: npm ci
         testPlatforms:
           - name: Linux
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
           - name: MacOS
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
           - name: Windows
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
         testSteps:
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '3.11'
+          - script: |
+              set -e
+              includes=$(cat << 'EOF'
+              {
+                "target_defaults": {
+                  "conditions": [
+                    ["OS=='linux'", {
+                      'cflags_cc!': [ '-std=gnu++20' ],
+                      'cflags_cc': [ '-std=gnu++2a' ],
+                    }]
+                  ]
+                }
+              }
+              EOF
+              )
+              if [ ! -d "$HOME/.gyp" ]; then
+                mkdir -p "$HOME/.gyp"
+              fi
+              echo "$includes" > "$HOME/.gyp/include.gypi"
+            displayName: Override gnu target for older sysroot
+            condition: eq(variables['Agent.OS'], 'Linux')
+
           - script: npm ci
             env:
               npm_config_disturl: https://electronjs.org/headers
-              npm_config_target: 19.1.9
+              npm_config_target: 32.1.2
               npm_config_runtime: electron
               npm_config_build_from_source: true
         apiScanSoftwareName: 'vscode-policy-watcher'
