@@ -31,11 +31,11 @@ extends:
           - script: npm ci
         testPlatforms:
           - name: Linux
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
           - name: MacOS
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
           - name: Windows
-            nodeVersions: [18.17.x]
+            nodeVersions: [20.16.x]
         testSteps:
           - task: UsePythonVersion@0
             inputs:
@@ -43,7 +43,7 @@ extends:
           - script: npm ci
             env:
               npm_config_disturl: https://electronjs.org/headers
-              npm_config_target: 19.1.9
+              npm_config_target: 32.1.2
               npm_config_runtime: electron
               npm_config_build_from_source: true
         apiScanSoftwareName: 'vscode-policy-watcher'
