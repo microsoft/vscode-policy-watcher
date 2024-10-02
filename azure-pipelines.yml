@@ -48,6 +48,8 @@ extends:
               fi
               echo "$includes" > "$HOME/.gyp/include.gypi"
             displayName: Override gnu target for older sysroot
+            condition: eq(variables['Agent.OS'], 'Linux')
+
           - script: npm ci
         testPlatforms:
           - name: Linux
@@ -80,6 +82,8 @@ extends:
               fi
               echo "$includes" > "$HOME/.gyp/include.gypi"
             displayName: Override gnu target for older sysroot
+            condition: eq(variables['Agent.OS'], 'Linux')
+
           - script: npm ci
             env:
               npm_config_disturl: https://electronjs.org/headers
