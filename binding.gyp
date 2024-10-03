@@ -5,11 +5,13 @@
             "sources": [
                 "src/main.cc"
             ],
+            "dependencies": [
+                "<!(node -p \"require('node-addon-api').targets\"):node_addon_api_except"
+            ],
             "include_dirs": [
                 "<!(node -p \"require('node-addon-api').include_dir\")"
             ],
-            'cflags!': ['-fno-exceptions'],
-            'cflags_cc!': ['-fno-exceptions'],
+            "defines": [ "NODE_API_SWALLOW_UNTHROWABLE_EXCEPTIONS" ],
             'conditions': [
                 ['OS=="mac"', {
                     "sources": [
@@ -17,10 +19,7 @@
                     ],
                     "defines": [
                         "MACOS",
-                    ],
-                    "xcode_settings": {
-                        "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
-                    }
+                    ]
                 }],
                 ['OS=="mac" and target_arch=="arm64"', {
                     "xcode_settings": {
@@ -42,8 +41,7 @@
                         "src/windows/NumberPolicy.cc"
                     ],
                     "defines": [
-                        "WINDOWS",
-                        "_HAS_EXCEPTIONS=1"
+                        "WINDOWS"
                     ],
                     "libraries": [
                         "userenv.lib"
@@ -53,10 +51,8 @@
                     },
                     "msvs_settings": {
                         "VCCLCompilerTool": {
-                            "ExceptionHandling": 1,
                             'AdditionalOptions': [
                                 '/guard:cf',
-                                '-std:c++17',
                                 '/we4244',
                                 '/we4267',
                                 '/ZH:SHA_256'
