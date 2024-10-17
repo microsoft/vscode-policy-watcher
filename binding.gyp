@@ -34,6 +34,14 @@
                         "LINUX",
                     ]
                 }],
+                ['OS=="aix"', {
+                    "sources": [
+                        "src/linux/PolicyWatcher.cc",
+                    ],
+                    "defines": [
+                        "AIX",
+                    ]
+                }],
                 ["OS=='win'", {
                     "sources": [
                         "src/windows/PolicyWatcher.cc",
