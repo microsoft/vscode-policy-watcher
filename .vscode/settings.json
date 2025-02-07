@@ -69,7 +69,6 @@
     "xtree": "cpp",
     "xutility": "cpp"
   },
-  "git.branchPrefix": "joao/",
   "git.branchProtection": ["main"],
   "git.branchProtectionPrompt": "alwaysCommitToNewBranch"
 }
