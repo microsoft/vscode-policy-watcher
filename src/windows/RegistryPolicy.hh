@@ -9,6 +9,8 @@
 #include <napi.h>
 #include <windows.h>
 #include <optional>
+#include <vector>
+#include <algorithm>
 #include "../Policy.hh"
 
 using namespace Napi;
@@ -17,10 +19,10 @@ template <typename T>
 class RegistryPolicy : public Policy
 {
 public:
-  RegistryPolicy(const std::string name, const std::string &productName, const DWORD regType)
+  RegistryPolicy(const std::string name, const std::string &productName, std::initializer_list<DWORD> types)
       : Policy(name),
         registryKey("Software\\Policies\\Microsoft\\" + productName),
-        regType(regType) {}
+        supportedTypes(types) {}
 
   bool refresh()
   {
@@ -57,12 +59,12 @@ public:
   }
 
 protected:
-  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize) const = 0;
+  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const = 0;
   virtual Value getJSValue(Env env, T value) const = 0;
 
 private:
   const std::string registryKey;
-  const DWORD regType;
+  const std::vector<DWORD> supportedTypes;
   std::optional<T> value;
 
   std::optional<T> read(HKEY root)
@@ -79,10 +81,11 @@ private:
     auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer, &bufferSize);
     RegCloseKey(hKey);
 
-    if (ERROR_SUCCESS != readResult || type != regType)
+    if (ERROR_SUCCESS != readResult ||
+        std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
       return std::nullopt;
 
-    return std::optional<T>{parseRegistryValue(buffer, bufferSize)};
+    return std::optional<T>{parseRegistryValue(buffer, bufferSize, type)};
   }
 };
 

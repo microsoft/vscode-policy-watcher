@@ -18,7 +18,7 @@ public:
   StringPolicy(const std::string name, const std::string &productName);
 
 protected:
-  std::string parseRegistryValue(LPBYTE buffer, DWORD bufferSize) const;
+  std::string parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
   Value getJSValue(Env env, std::string value) const;
 };
 
