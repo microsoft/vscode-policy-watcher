@@ -74,18 +74,32 @@ private:
     if (ERROR_SUCCESS != RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &hKey))
       return std::nullopt;
 
-    BYTE buffer[1024];
-    DWORD bufferSize = sizeof(buffer);
+    DWORD bufferSize = 0;
     DWORD type;
 
-    auto readResult = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer, &bufferSize);
+    // First query to get required buffer size
+    auto result = RegQueryValueEx(hKey, name.c_str(), 0, &type, nullptr, &bufferSize);
+
+    if (ERROR_SUCCESS != result && ERROR_MORE_DATA != result)
+    {
+      RegCloseKey(hKey);
+      return std::nullopt;
+    }
+
+    if (std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
+    {
+      RegCloseKey(hKey);
+      return std::nullopt;
+    }
+
+    std::vector<BYTE> buffer(bufferSize);
+    result = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer.data(), &bufferSize);
     RegCloseKey(hKey);
 
-    if (ERROR_SUCCESS != readResult ||
-        std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
+    if (ERROR_SUCCESS != result)
       return std::nullopt;
 
-    return std::optional<T>{parseRegistryValue(buffer, bufferSize, type)};
+    return std::optional<T>{parseRegistryValue(buffer.data(), bufferSize, type)};
   }
 };
 
