@@ -17,6 +17,7 @@ public:
     StringPolicy(const std::string name, const std::string &productName);
 protected:
     Value getJSValue(Env env, std::string value) const;
+    std::optional<std::string> read() const override;
 };
 
 #endif
