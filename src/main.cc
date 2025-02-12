@@ -8,8 +8,17 @@
 
 #include "Policy.hh"
 #include "PolicyWatcher.hh"
+#include <iostream>
 
 using namespace Napi;
+
+
+void PrintToConsole(Napi::Env env, const std::string& message) {
+  Napi::Object global = env.Global();
+  Napi::Object console = global.Get("console").As<Napi::Object>();
+  Napi::Function log = console.Get("log").As<Napi::Function>();
+  log.Call(console, { Napi::String::New(env, message) });
+}
 
 Value DisposeWatcher(const CallbackInfo &info)
 {
@@ -22,9 +31,15 @@ Value CreateWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
 
-#ifndef WINDOWS
-  throw TypeError::New(env, "Unsupported platform");
-#endif
+  PrintToConsole(env, "Welcome");
+
+  #ifdef MACOS
+  PrintToConsole(env, "In macOS land");
+  #endif
+
+// #ifndef WINDOWS 
+//   throw TypeError::New(env, "Unsupported platform");
+// #endif
 
   if (info.Length() < 3)
     throw TypeError::New(env, "Expected 3 arguments");
@@ -55,18 +70,24 @@ Value CreateWatcher(const CallbackInfo &info)
 
     auto policyType = std::string(rawPolicyType.As<String>());
 
-    if (policyType == "string")
+    if (policyType == "string") {
+      PrintToConsole(env, rawPolicyName.As<String>());
       watcher->AddStringPolicy(rawPolicyName.As<String>());
-    else if (policyType == "number")
+    }
+    else if (policyType == "number") {
       watcher->AddNumberPolicy(rawPolicyName.As<String>());
-    else
+    }
+    else {
       throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
+    }
   }
 
   watcher->Queue();
 
   auto result = Object::New(env);
   result.Set(String::New(env, "dispose"), Function::New(env, DisposeWatcher, "disposeWatcher", watcher));
+
+  PrintToConsole(env, "Goodbye!");
   return result;
 }
 

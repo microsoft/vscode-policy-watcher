@@ -14,6 +14,11 @@
 #include <windows.h>
 #endif
 
+#ifdef MACOS
+#define Boolean CFBoolean
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 using namespace Napi;
 
 class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>

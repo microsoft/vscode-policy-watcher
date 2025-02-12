@@ -3,14 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-exports.createWatcher = require('bindings')('vscode-policy-watcher');
+#ifndef STRING_POLICY_H
+#define STRING_POLICY_H
 
-if (require.main === module) {
-  exports.createWatcher(
-    'com.visualstudio.code.oss',
-    {
-      AllowedExtensions: { type: 'string' },
-    },
-    msg => console.log(msg)
-  );
-}
+#include <napi.h>
+#include "PreferencesPolicy.hh"
+
+using namespace Napi;
+
+class StringPolicy : public PreferencesPolicy<std::string>
+{
+public:
+    StringPolicy(const std::string name, const std::string &productName);
+protected:
+    Value getJSValue(Env env, std::string value) const;
+};
+
+#endif

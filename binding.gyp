@@ -16,6 +16,7 @@
                 ['OS=="mac"', {
                     "sources": [
                         "src/macos/PolicyWatcher.cc",
+                        "src/macos/StringPolicy.cc",
                     ],
                     "defines": [
                         "MACOS",
