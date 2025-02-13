@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-#include "StringPolicy.hh"  
+#include "StringPolicy.hh"
 #include <iostream>
 
 using namespace Napi;
 
 StringPolicy::StringPolicy(const std::string name, const std::string &productName)
-    : PreferencesPolicy(name, productName) 
-    {
-    }
+    : PreferencesPolicy(name, productName)
+{
+}
 
 Value StringPolicy::getJSValue(Env env, std::string value) const
 {
@@ -28,7 +28,17 @@ std::optional<std::string> StringPolicy::read() const
   if (CFGetTypeID(pref) != CFStringGetTypeID())
     return std::nullopt;
 
-  auto result = std::string(CFStringGetCStringPtr((CFStringRef)pref, kCFStringEncodingUTF8));
+  CFIndex length = CFStringGetLength((CFStringRef)pref);
+  CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+  std::vector<char> buffer(maxSize);
+
+  if (CFStringGetCString((CFStringRef)pref, buffer.data(), maxSize, kCFStringEncodingUTF8))
+  {
+    std::string result(buffer.data());
+    CFRelease(pref);
+    return result;
+  }
+
   CFRelease(pref);
-  return result;
+  return std::nullopt;
 }
