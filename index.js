@@ -7,9 +7,9 @@ exports.createWatcher = require('bindings')('vscode-policy-watcher');
 
 if (require.main === module) {
   exports.createWatcher(
-    'CodeOSS',
+    'com.visualstudio.code.oss',
     {
-      UpdateMode: { type: 'string' },
+      AllowedExtensions: { type: 'string' },
       SCMInputFontSize: { type: 'number' },
     },
     msg => console.log(msg)
