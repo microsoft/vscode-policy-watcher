@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "StringPolicy.hh"
-#include <iostream>
 
 using namespace Napi;
 

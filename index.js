@@ -10,6 +10,7 @@ if (require.main === module) {
     'com.visualstudio.code.oss',
     {
       AllowedExtensions: { type: 'string' },
+      SCMInputFontSize: { type: 'number' },
     },
     msg => console.log(msg)
   );

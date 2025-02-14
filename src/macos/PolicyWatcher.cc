@@ -5,7 +5,7 @@
 
 #include "../PolicyWatcher.hh"
 #include "StringPolicy.hh"
-#include <iostream>
+#include "NumberPolicy.hh"
 #include <thread>
 
 using namespace Napi;
@@ -17,7 +17,6 @@ static void fsevents_callback(ConstFSEventStreamRef streamRef,
                             const FSEventStreamEventFlags eventFlags[],
                             const FSEventStreamEventId eventIds[])
 {
-    // Signal that changes occurred
     dispatch_semaphore_t *sem = (dispatch_semaphore_t *)clientCallBackInfo;
     dispatch_semaphore_signal(*sem);
 }
@@ -53,7 +52,7 @@ void PolicyWatcher::AddStringPolicy(const std::string name)
 }
 void PolicyWatcher::AddNumberPolicy(const std::string name)
 {
-  throw TypeError::New(Env(), "Not implemented");
+    policies.push_back(std::make_unique<NumberPolicy>(name, productName));
 }
 
 void PolicyWatcher::OnExecute(Napi::Env env)
@@ -115,7 +114,6 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 
 void PolicyWatcher::Dispose() 
 {
-    std::cout << "Disposing policy watcher" << std::endl;
     disposed = true;
     if (sem) {
         dispatch_semaphore_signal(sem);

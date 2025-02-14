@@ -8,7 +8,6 @@
 
 #include "Policy.hh"
 #include "PolicyWatcher.hh"
-#include <iostream>
 
 using namespace Napi;
 
