@@ -8,7 +8,21 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <CoreServices/CoreServices.h>
 using namespace Napi;
+
+// Add FSEvents callback
+static void fsevents_callback(ConstFSEventStreamRef streamRef,
+                            void *clientCallBackInfo,
+                            size_t numEvents,
+                            void *eventPaths,
+                            const FSEventStreamEventFlags eventFlags[],
+                            const FSEventStreamEventId eventIds[])
+{
+    // Signal that changes occurred
+    dispatch_semaphore_t *sem = (dispatch_semaphore_t *)clientCallBackInfo;
+    dispatch_semaphore_signal(*sem);
+}
 
 PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
     : AsyncProgressQueueWorker(okCallback),
@@ -39,14 +53,34 @@ void PolicyWatcher::OnExecute(Napi::Env env)
 void PolicyWatcher::Execute(const ExecutionProgress &progress)
 {
   bool first = true;
+  
+  // Setup FSEvents monitoring
+  CFStringRef path = CFSTR("/Library/Managed Preferences/");
+  CFArrayRef pathsToWatch = CFArrayCreate(NULL, (const void **)&path, 1, NULL);
+  
+  // Create semaphore for blocking
+  dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+  
+  FSEventStreamContext context = {0, &sem, NULL, NULL, NULL};
+  FSEventStreamRef stream = FSEventStreamCreate(NULL,
+                                                &fsevents_callback,
+                                                &context,
+                                                pathsToWatch,
+                                                kFSEventStreamEventIdSinceNow,
+                                                1.0,
+                                                kFSEventStreamCreateFlagFileEvents);
 
-  while (TRUE)
+  dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+  FSEventStreamSetDispatchQueue(stream, queue);
+  FSEventStreamStart(stream);
+
+  while (true)
   {
     std::vector<const Policy *> updatedPolicies;
 
     for (auto &policy : policies)
     {
-      if (policy->refresh())
+      if (first || policy->refresh())
       {
         updatedPolicies.push_back(policy.get());
       }
@@ -57,11 +91,16 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
 
     first = false;
 
-    // WAIT with CFNotificationCenterAddObserver
-
-    // TODO: Temporary
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    // Block until changes occur
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
   }
+
+  // Cleanup (though we never reach here in practice)
+  FSEventStreamStop(stream);
+  FSEventStreamInvalidate(stream);
+  FSEventStreamRelease(stream);
+  CFRelease(pathsToWatch);
+  dispatch_release(sem);
 }
 
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count) 
