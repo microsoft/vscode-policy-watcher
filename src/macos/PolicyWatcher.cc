@@ -27,7 +27,8 @@ PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback
       productName(productName),
       stream(nullptr),
       pathsToWatch(nullptr),
-      sem(nullptr)
+      sem(nullptr),
+      disposed(false)
 {
 }
 
@@ -65,6 +66,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
     std::vector<const Policy *> updatedPolicies;
     bool first = true;
 
+    // Watch for changes
     CFStringRef path = CFSTR("/Library/Managed Preferences/"); // TODO: Does this need to be localized?
     pathsToWatch = CFArrayCreate(NULL, (const void **)&path, 1, NULL);
     sem = dispatch_semaphore_create(0);
@@ -81,7 +83,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
     FSEventStreamSetDispatchQueue(stream, queue);
     FSEventStreamStart(stream);
 
-    while (true)
+    while (!disposed)
     {
         updatedPolicies.clear();
         for (auto &policy : policies)
@@ -96,11 +98,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
             progress.Send(&updatedPolicies[0], updatedPolicies.size());
 
         first = false;
-
-        // Block until changes occur
         dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
-
-        // Check if someone called dispose()
     }
 }
 
@@ -117,4 +115,9 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 
 void PolicyWatcher::Dispose() 
 {
+    std::cout << "Disposing policy watcher" << std::endl;
+    disposed = true;
+    if (sem) {
+        dispatch_semaphore_signal(sem);
+    }
 }
