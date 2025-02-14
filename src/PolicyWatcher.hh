@@ -16,7 +16,7 @@
 
 #ifdef MACOS
 #define Boolean CFBoolean
-#include <CoreFoundation/CoreFoundation.h>
+#include <CoreServices/CoreServices.h>
 #endif
 
 using namespace Napi;
@@ -42,6 +42,13 @@ protected:
 #ifdef WINDOWS
   HANDLE handles[4];
 #endif
+
+#ifdef MACOS
+  FSEventStreamRef stream;
+  CFArrayRef pathsToWatch;
+  dispatch_semaphore_t sem;
+#endif
+
 };
 
 #endif
