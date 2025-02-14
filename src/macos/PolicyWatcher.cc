@@ -66,7 +66,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
     bool first = true;
 
     // Watch for changes
-    CFStringRef path = CFSTR("/Library/Managed Preferences/"); // TODO: Does this need to be localized?
+    CFStringRef path = CFSTR("/Library/Managed Preferences/"); // TODO: Does this need to be localized? Can we use an observer here?
     pathsToWatch = CFArrayCreate(NULL, (const void **)&path, 1, NULL);
     sem = dispatch_semaphore_create(0);
     FSEventStreamContext context = {0, &sem, NULL, NULL, NULL};

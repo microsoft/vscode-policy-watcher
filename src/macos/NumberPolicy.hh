@@ -7,7 +7,6 @@
 #define MAC_NUMBER_POLICY_H
 
 #include <napi.h>
-#include <CoreFoundation/CoreFoundation.h>
 #include "PreferencesPolicy.hh"
 
 using namespace Napi;
