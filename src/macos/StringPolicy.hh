@@ -16,7 +16,7 @@ class StringPolicy : public PreferencesPolicy<std::string>
 public:
     StringPolicy(const std::string name, const std::string &productName);
 protected:
-    Value getJSValue(Env env, std::string value) const;
+    Value getJSValue(Env env, std::string value) const override;
     std::optional<std::string> read() const override;
 };
 

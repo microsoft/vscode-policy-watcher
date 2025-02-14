@@ -18,7 +18,7 @@ public:
   std::optional<long long> read() const override;
 
 protected:
-  Value getJSValue(Env env, long long value) const;
+  Value getJSValue(Env env, long long value) const override;
 };
 
 #endif
