@@ -47,7 +47,7 @@ public:
     {
         if (!value.has_value())
             return env.Undefined();
-        return getJSValue(env, value.value());
+        return getJSValue(env, *value);  // value.value() is only supported after macOS 10.13
     }
 
 protected:
