@@ -22,9 +22,9 @@ Value CreateWatcher(const CallbackInfo &info)
 {
   auto env = info.Env();
 
-// #ifndef WINDOWS 
-  // throw TypeError::New(env, "Unsupported platform");
-// #endif
+#if !defined(WINDOWS) && !defined(MACOS)
+  throw TypeError::New(env, "Unsupported platform");
+#endif
 
   if (info.Length() < 3)
     throw TypeError::New(env, "Expected 3 arguments");
