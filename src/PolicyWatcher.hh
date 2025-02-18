@@ -45,7 +45,6 @@ protected:
 
 #ifdef MACOS
   FSEventStreamRef stream;
-  CFArrayRef pathsToWatch;
   dispatch_semaphore_t sem;
   bool disposed;
 #endif

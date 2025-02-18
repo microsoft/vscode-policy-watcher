@@ -25,7 +25,6 @@ PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback
     : AsyncProgressQueueWorker(okCallback),
       productName(productName),
       stream(nullptr),
-      pathsToWatch(nullptr),
       sem(nullptr),
       disposed(false)
 {
@@ -37,9 +36,6 @@ PolicyWatcher::~PolicyWatcher()
         FSEventStreamStop(stream);
         FSEventStreamInvalidate(stream);
         FSEventStreamRelease(stream);
-    }
-    if (pathsToWatch) {
-        CFRelease(pathsToWatch);
     }
     if (sem) {
         dispatch_release(sem);
@@ -66,14 +62,13 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
     bool first = true;
 
     // Watch for changes
-    CFStringRef path = CFSTR("/Library/Managed Preferences/"); // TODO: Does this need to be localized? Can we use an observer here?
-    pathsToWatch = CFArrayCreate(NULL, (const void **)&path, 1, NULL);
+    CFStringRef path = CFSTR("/Library/Managed Preferences/");
     sem = dispatch_semaphore_create(0);
     FSEventStreamContext context = {0, &sem, NULL, NULL, NULL};
     stream = FSEventStreamCreate(NULL,
                                &fsevents_callback,
                                &context,
-                               pathsToWatch,
+                               CFArrayCreate(NULL, (const void **)&path, 1, NULL),
                                kFSEventStreamEventIdSinceNow,
                                1.0,
                                kFSEventStreamCreateFlagFileEvents);
