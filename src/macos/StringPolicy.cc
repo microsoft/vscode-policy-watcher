@@ -25,7 +25,10 @@ std::optional<std::string> StringPolicy::read() const
     return std::nullopt;
 
   if (CFGetTypeID(pref) != CFStringGetTypeID())
+  {
+    CFRelease(pref);
     return std::nullopt;
+  }
 
   CFIndex length = CFStringGetLength((CFStringRef)pref);
   CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;

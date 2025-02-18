@@ -6,10 +6,13 @@
 exports.createWatcher = require('bindings')('vscode-policy-watcher');
 
 if (require.main === module) {
+  const platform = process.platform;
   exports.createWatcher(
-    'com.visualstudio.code.oss',
+    platform === 'darwin'
+      ? 'com.visualstudio.code.oss'  // MacOS
+      : 'CodeOSS',                   // Windows
     {
-      AllowedExtensions: { type: 'string' },
+      UpdateMode: { type: 'string' },
       SCMInputFontSize: { type: 'number' },
     },
     msg => console.log(msg)
