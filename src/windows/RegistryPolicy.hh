@@ -24,7 +24,7 @@ public:
         registryKey("Software\\Policies\\Microsoft\\" + productName),
         supportedTypes(types) {}
 
-  bool refresh()
+  PolicyRefreshResult refresh()
   {
     auto machine = read(HKEY_LOCAL_MACHINE);
 
@@ -33,21 +33,31 @@ public:
       if (value != machine)
       {
         value = machine;
-        return true;
+        return PolicyRefreshResult::Updated;
       }
 
-      return false;
+      return PolicyRefreshResult::Unchanged;
     }
 
     auto user = read(HKEY_CURRENT_USER);
 
+    // Check for no value or removal
+    if (!user.has_value())
+    {
+        if (!value.has_value())
+            return PolicyRefreshResult::NotSet;
+
+        value.reset();
+        return PolicyRefreshResult::Removed;
+    }
+
     if (value != user)
     {
       value = user;
-      return true;
+      return PolicyRefreshResult::Updated;
     }
 
-    return false;
+    return PolicyRefreshResult::Unchanged;
   }
 
   Value getValue(Env env) const

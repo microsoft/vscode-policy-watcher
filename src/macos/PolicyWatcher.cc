@@ -95,8 +95,6 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
                 case PolicyRefreshResult::Removed:
                     update = true;
                     break;
-                case PolicyRefreshResult::NotSet:
-                    break;
             }
         }
 
