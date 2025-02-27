@@ -71,7 +71,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
                                CFArrayCreate(NULL, (const void **)&path, 1, NULL),
                                kFSEventStreamEventIdSinceNow,
                                1.0,
-                               kFSEventStreamCreateFlagFileEvents);
+                               kCFStreamEventNone);
 
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     FSEventStreamSetDispatchQueue(stream, queue);
