@@ -33,25 +33,21 @@ public:
     {
         auto newValue = read();
 
-        // Value not set
-        if (!value.has_value() && !newValue.has_value())
-            return PolicyRefreshResult::NotSet;
-
-        // Value previously set, now removed
-        if (value.has_value() && !newValue.has_value())
+        // Check for no value or removal
+        if (!newValue.has_value())
         {
+            if (!value.has_value())
+                return PolicyRefreshResult::NotSet;
+
             value.reset();
             return PolicyRefreshResult::Removed;
         }
 
-        // New value
-        if (newValue.has_value())
+        // Is the value updated?
+        if (value != newValue)
         {
-            if (value != newValue)
-            {
-                value = newValue;
-                return PolicyRefreshResult::Updated;
-            }
+            value = newValue;
+            return PolicyRefreshResult::Updated;
         }
 
         return PolicyRefreshResult::Unchanged;
