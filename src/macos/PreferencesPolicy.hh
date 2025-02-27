@@ -18,8 +18,8 @@ class PreferencesPolicy : public Policy
 public:
     PreferencesPolicy(const std::string name, const std::string &productName)
         : Policy(name),
-        appID(CFStringCreateWithCString(NULL, productName.c_str(), kCFStringEncodingUTF8)),
-        key(CFStringCreateWithCString(NULL, name.c_str(), kCFStringEncodingUTF8))
+          appID(CFStringCreateWithCString(NULL, productName.c_str(), kCFStringEncodingUTF8)),
+          key(CFStringCreateWithCString(NULL, name.c_str(), kCFStringEncodingUTF8))
     {
     }
 
@@ -29,25 +29,39 @@ public:
         CFRelease(key);
     }
 
-    bool refresh()
+    PolicyRefreshResult refresh()
     {
         auto newValue = read();
+
+        // Value not set
+        if (!value.has_value() && !newValue.has_value())
+            return PolicyRefreshResult::NotSet;
+
+        // Value previously set, now removed
+        if (value.has_value() && !newValue.has_value())
+        {
+            value.reset();
+            return PolicyRefreshResult::Removed;
+        }
+
+        // New value
         if (newValue.has_value())
         {
             if (value != newValue)
             {
                 value = newValue;
-                return true;
+                return PolicyRefreshResult::Updated;
             }
         }
-        return false;
+
+        return PolicyRefreshResult::Unchanged;
     }
 
     Value getValue(Env env) const
     {
         if (!value.has_value())
             return env.Undefined();
-        return getJSValue(env, *value);  // value.value() is only supported after macOS 10.13
+        return getJSValue(env, *value); // value.value() is only supported after macOS 10.13
     }
 
 protected:
