@@ -63,15 +63,26 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
   {
     std::vector<const Policy *> updatedPolicies;
 
+    bool update = false;
+    updatedPolicies.clear();
     for (auto &policy : policies)
     {
-      if (policy->refresh())
+      switch (policy->refresh())
       {
+      case PolicyRefreshResult::Updated:
         updatedPolicies.push_back(policy.get());
+        update = true;
+        break;
+      case PolicyRefreshResult::Unchanged:
+        updatedPolicies.push_back(policy.get());
+        break;
+      case PolicyRefreshResult::Removed:
+        update = true;
+        break;
       }
     }
 
-    if (first || updatedPolicies.size() > 0)
+    if (first || update)
       progress.Send(&updatedPolicies[0], updatedPolicies.size());
 
     first = false;
