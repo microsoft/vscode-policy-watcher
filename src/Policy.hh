@@ -10,11 +10,18 @@
 
 using namespace Napi;
 
+enum class PolicyRefreshResult {
+  Updated,
+  Unchanged,
+  Removed,
+  NotSet
+};
+
 class Policy
 {
 public:
   virtual ~Policy() {}
-  virtual bool refresh() = 0;
+  virtual PolicyRefreshResult refresh() = 0;
   virtual Value getValue(Env env) const = 0;
   const std::string name;
 

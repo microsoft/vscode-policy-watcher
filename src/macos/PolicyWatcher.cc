@@ -71,7 +71,7 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
                                CFArrayCreate(NULL, (const void **)&path, 1, NULL),
                                kFSEventStreamEventIdSinceNow,
                                1.0,
-                               kFSEventStreamCreateFlagFileEvents);
+                               kCFStreamEventNone);
 
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     FSEventStreamSetDispatchQueue(stream, queue);
@@ -80,15 +80,25 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
     while (!disposed)
     {
         updatedPolicies.clear();
+        bool update = false;
         for (auto &policy : policies)
-        {
-            if (policy->refresh())
+        {            
+            switch(policy->refresh())
             {
-                updatedPolicies.push_back(policy.get());
+                case PolicyRefreshResult::Updated:
+                    updatedPolicies.push_back(policy.get());
+                    update = true;
+                    break;
+                case PolicyRefreshResult::Unchanged:
+                    updatedPolicies.push_back(policy.get());
+                    break;
+                case PolicyRefreshResult::Removed:
+                    update = true;
+                    break;
             }
         }
 
-        if (first || updatedPolicies.size() > 0)    
+        if (first || update)
             progress.Send(&updatedPolicies[0], updatedPolicies.size());
 
         first = false;
@@ -100,6 +110,12 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 {
   HandleScope scope(Env());
   auto result = Object::New(Env());
+
+  if (count == 0)
+  {
+    Callback().Call(Receiver().Value(), {result});
+    return;
+  }
 
   for (size_t i = 0; i < count; i++)
     result.Set(policies[i]->name, policies[i]->getValue(Env()));
