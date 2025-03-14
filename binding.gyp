@@ -17,7 +17,8 @@
                     "sources": [
                         "src/macos/PolicyWatcher.cc",
                         "src/macos/StringPolicy.cc",
-                        "src/macos/NumberPolicy.cc"
+                        "src/macos/NumberPolicy.cc",
+                        "src/macos/BooleanPolicy.cc"
                     ],
                     "defines": [
                         "MACOS",
@@ -40,7 +41,8 @@
                     "sources": [
                         "src/windows/PolicyWatcher.cc",
                         "src/windows/StringPolicy.cc",
-                        "src/windows/NumberPolicy.cc"
+                        "src/windows/NumberPolicy.cc",
+                        "src/windows/BooleanPolicy.cc"
                     ],
                     "defines": [
                         "WINDOWS"

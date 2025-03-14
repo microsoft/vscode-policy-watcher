@@ -9,9 +9,10 @@ interface Watcher {
 
 type StringPolicy = { type: "string" };
 type NumberPolicy = { type: "number" };
+type BooleanPolicy = { type: "boolean" };
 
 export interface Policies {
-  [policyName: string]: StringPolicy | NumberPolicy;
+  [policyName: string]: StringPolicy | NumberPolicy | BooleanPolicy;
 }
 
 export type PolicyUpdate<T extends Policies> = {
@@ -19,9 +20,11 @@ export type PolicyUpdate<T extends Policies> = {
     | undefined
     | (T[K] extends StringPolicy
         ? string
+        : (T[K] extends BooleanPolicy
+        ? boolean
         : T[K] extends NumberPolicy
         ? number
-        : never);
+        : never));
 };
 
 export function createWatcher<T extends Policies>(

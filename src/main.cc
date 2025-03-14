@@ -60,8 +60,9 @@ Value CreateWatcher(const CallbackInfo &info)
     }
     else if (policyType == "number") {
       watcher->AddNumberPolicy(rawPolicyName.As<String>());
-    }
-    else {
+    } else if (policyType == "boolean") {
+      watcher->AddBooleanPolicy(rawPolicyName.As<String>());
+    } else {
       throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
     }
   }

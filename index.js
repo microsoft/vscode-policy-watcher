@@ -14,6 +14,7 @@ if (require.main === module) {
     {
       UpdateMode: { type: 'string' },
       SCMInputFontSize: { type: 'number' },
+      DisableFeedback: { type: 'boolean' },
     },
     msg => console.log(msg)
   );
