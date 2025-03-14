@@ -4,19 +4,25 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "BooleanPolicy.hh"
+#include <iostream>
 
 using namespace Napi;
 
 BooleanPolicy::BooleanPolicy(const std::string& name, const std::string& productName)
-    : RegistryPolicy(name, productName, {REG_QWORD}) {}
+  : RegistryPolicy(name, productName, {REG_DWORD}) {}
 
-long long BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
+bool BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
 {
-  // TODO: Unimplemented
-  return 0; 
+  if (type != REG_DWORD || bufferSize != sizeof(DWORD))
+  {
+    return false;
+  }
+
+  DWORD value = *reinterpret_cast<DWORD*>(buffer);
+  return (value != 0);
 }
 
-Value BooleanPolicy::getJSValue(Env env, long long value) const
+Value BooleanPolicy::getJSValue(Env env, bool value) const
 {
-  return Boolean::New(env, static_cast<bool>(value));
+  return Boolean::New(env, value);
 }

@@ -12,14 +12,14 @@
 
 using namespace Napi;
 
-class BooleanPolicy : public RegistryPolicy<long long>
+class BooleanPolicy : public RegistryPolicy<bool>
 {
 public:
   BooleanPolicy(const std::string& name, const std::string &productName);
 
 protected:
-  long long parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
-  Value getJSValue(Env env, long long value) const;
+  bool parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
+  Value getJSValue(Env env, bool value) const;
 };
 
 #endif
