@@ -92,14 +92,12 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
             switch(policy->refresh())
             {
                 case PolicyRefreshResult::Updated:
+                case PolicyRefreshResult::Removed:
                     updatedPolicies.push_back(policy.get());
                     update = true;
                     break;
                 case PolicyRefreshResult::Unchanged:
                     updatedPolicies.push_back(policy.get());
-                    break;
-                case PolicyRefreshResult::Removed:
-                    update = true;
                     break;
             }
         }
