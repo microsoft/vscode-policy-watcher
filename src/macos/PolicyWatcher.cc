@@ -127,6 +127,8 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
   Callback().Call(Receiver().Value(), {result});
 }
 
+void PolicyWatcher::OnOK() {}
+
 void PolicyWatcher::Dispose() 
 {
     disposed = true;

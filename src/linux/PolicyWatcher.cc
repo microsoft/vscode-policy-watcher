@@ -23,4 +23,5 @@ void PolicyWatcher::AddBooleanPolicy(const std::string name) {}
 void PolicyWatcher::OnExecute(Napi::Env env) {}
 void PolicyWatcher::Execute(const ExecutionProgress &progress) {}
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count) {}
+void PolicyWatcher::OnOK() {}
 void PolicyWatcher::Dispose() {}
