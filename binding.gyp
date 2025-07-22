@@ -48,7 +48,7 @@
                         "WINDOWS"
                     ],
                     "libraries": [
-                        "userenv.lib"
+                        "-luserenv.lib"
                     ],
                     "msvs_configuration_attributes": {
                         "SpectreMitigation": "Spectre"
