@@ -1,7 +1,7 @@
 /node_modules
 /build
 
-# Prebuilt binaries (will be included in releases)
+# Prebuilt binaries (exclude from repo, will be uploaded to GitHub releases)
 /prebuilds
 
 # Development

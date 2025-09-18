@@ -9,16 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - GitHub Actions CI/CD pipeline for automated building and testing
-- Support for prebuilt binaries across multiple platforms (Windows x64/x86, macOS x64/arm64, Linux x64/arm64)
+- Support for prebuilt binaries across multiple platforms (Windows x64/arm64, macOS x64/arm64, Linux x64/arm64)
 - Automated release process with GitHub Actions
 - Build scripts for local development
 - **Native ARM64 support** using GitHub's new ARM64 hosted runners (January 2025)
 
 ### Changed
+- **Minimum Node.js version**: 18.x → 20.0.0+
 - Migrated from Azure Pipelines to GitHub Actions
 - Updated package.json to support prebuild system
 - Enhanced README with installation and development instructions
 - **Upgraded from QEMU emulation to native ARM64 runners** for 3-4x faster builds
+
+### Removed
+- **Windows x86 support** - Replaced with ARM64 support (x64 + arm64 covers modern Windows devices)
+- **Node.js 18.x support** - Minimum Node.js version now 20.0.0
+- Legacy QEMU ARM64 build scripts (replaced by native ARM64 runners)
 
 ### Technical
 - Added prebuild and prebuild-install dependencies
@@ -26,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive CI testing matrix
 - **Implemented native ARM64 builds** using `ubuntu-22.04-arm` runners
 - Kept legacy QEMU builds as optional fallback for additional testing
+
+### Security
+- Build-time dependencies contain some known vulnerabilities (form-data, semver, tar)
+- These affect build environment only, not runtime security
+- Runtime dependencies (bindings, node-addon-api) are secure
 
 ### Performance
 - **ARM64 build time reduced from ~8-10 minutes to ~2-3 minutes**

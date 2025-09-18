@@ -16,22 +16,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, macos-latest, windows-latest]
-        node: [18.x, 20.x]
+        node: [20.x]
         include:
-          # Additional Windows configurations
+          # Additional Windows configuration for ARM
           - os: windows-latest
             node: 20.x
-            arch: x86
+            arch: arm64
           # Additional macOS configuration for ARM
           - os: macos-latest
             node: 20.x
             arch: arm64
-        exclude:
-          # Reduce matrix size for faster builds on PRs
-          - os: ubuntu-20.04
-            node: 18.x
-          - os: macos-latest
-            node: 18.x
 
     name: Build on ${{ matrix.os }} (Node ${{ matrix.node }}${{ matrix.arch && format(', {0}', matrix.arch) || '' }})
     
@@ -81,7 +75,7 @@ jobs:
           - os: windows-latest
             arch: x64
           - os: windows-latest
-            arch: x86
+            arch: arm64
           # macOS builds  
           - os: macos-latest
             arch: x64

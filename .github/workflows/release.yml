@@ -25,8 +25,8 @@ jobs:
           # Windows builds
           - os: windows-latest
             arch: x64
-          - os: windows-latest  
-            arch: x86
+          - os: windows-latest
+            arch: arm64
           # macOS builds
           - os: macos-latest
             arch: x64
@@ -163,7 +163,7 @@ jobs:
             ## Platform-specific binaries
             
             This release includes prebuilt binaries for:
-            - Windows (x64, x86)
+            - Windows (x64, arm64)
             - macOS (x64, arm64) 
             - Linux (x64, arm64)
             

@@ -51,21 +51,25 @@ GitHub now provides these native ARM64 runners for **public repositories**:
 
 Our `cls-policy-watcher` project now uses:
 
-### **Primary Strategy**: Native ARM64 Runners
+### **Simplified Build Matrix**
 ```yaml
 strategy:
   matrix:
     include:
-      - os: ubuntu-22.04-arm
-        arch: arm64
+      # Standard builds
+      - { os: ubuntu-20.04, node: 20.x, arch: x64 }
+      - { os: macos-latest, node: 20.x, arch: x64 }
+      - { os: macos-latest, node: 20.x, arch: arm64 }
+      - { os: windows-latest, node: 20.x, arch: x64 }
+      - { os: windows-latest, node: 20.x, arch: arm64 }
+      
+      # Native ARM64 builds
+      - { os: ubuntu-22.04-arm, arch: arm64 }
 ```
 
-### **Fallback Strategy**: Legacy QEMU (optional)
-For additional testing with Alpine Linux or other scenarios:
-```yaml
-prebuild-linux-arm-legacy:
-  if: github.event_name == 'workflow_dispatch'  # Manual trigger only
-```
+### **Requirements**
+- **Node.js**: 20.0.0+ (18.x support removed)
+- **Platforms**: Windows x64/arm64, macOS x64/arm64, Linux x64/arm64
 
 ## 🎯 **Benefits**
 

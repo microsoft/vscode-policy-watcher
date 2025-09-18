@@ -21,7 +21,7 @@ createWatcher(
 ## Installation
 
 The package includes prebuilt binaries for the following platforms:
-- Windows (x64, x86)
+- Windows (x64, arm64)
 - macOS (x64, arm64)
 - Linux (x64, arm64)
 
@@ -35,7 +35,7 @@ npm install @vscode/policy-watcher
 
 ### Prerequisites
 
-- Node.js 18.x or 20.x
+- Node.js 20.x+
 - Python 3.11+
 - Platform-specific build tools:
   - Windows: Visual Studio Build Tools
