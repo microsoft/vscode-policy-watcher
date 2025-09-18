@@ -37,7 +37,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          architecture: x64
+          # Use x64 for Windows ARM64 cross-compilation, otherwise match target arch
+          architecture: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'x64' || matrix.arch || 'x64' }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -68,9 +69,12 @@ jobs:
         run: npm run rebuild
         env:
           npm_config_build_from_source: true
-          npm_config_target_arch: ${{ matrix.arch == 'arm64' && 'arm64' || '' }}
+          # Only set target arch for Windows ARM64 cross-compilation
+          npm_config_target_arch: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'arm64' || '' }}
 
       - name: Test
+        # Skip test only for Windows ARM64 (cross-compilation scenario)
+        if: ${{ !(matrix.os == 'windows-latest' && matrix.arch == 'arm64') }}
         run: npm test
 
   prebuild:
