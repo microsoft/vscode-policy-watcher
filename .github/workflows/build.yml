@@ -48,7 +48,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v1.3
         with:
-          msbuild-architecture: ${{ matrix.arch || 'x64' }}
+          msbuild-architecture: x64
+
+      - name: Setup Windows ARM64 cross-compilation
+        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
+        run: |
+          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
+          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
 
       - name: Add setuptools (non-Windows)
         if: matrix.os != 'windows-latest'
@@ -61,6 +68,7 @@ jobs:
         run: npm run rebuild
         env:
           npm_config_build_from_source: true
+          npm_config_target_arch: ${{ matrix.arch == 'arm64' && 'arm64' || '' }}
 
       - name: Test
         run: npm test
@@ -110,13 +118,6 @@ jobs:
         uses: microsoft/setup-msbuild@v1.3
         with:
           msbuild-architecture: x64
-
-      - name: Setup Windows ARM64 cross-compilation
-        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
-        run: |
-          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
-          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
-          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
 
       - name: Setup Windows ARM64 cross-compilation
         if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
