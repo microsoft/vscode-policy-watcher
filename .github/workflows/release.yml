@@ -1,0 +1,202 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (leave empty for dry run)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  prebuild:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows builds
+          - os: windows-latest
+            arch: x64
+          - os: windows-latest
+            arch: arm64
+          # macOS builds
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          # Linux builds
+          - os: ubuntu-22.04
+            arch: x64
+          # Linux ARM64 (native)
+          - os: ubuntu-22.04-arm
+            arch: arm64
+
+    name: Prebuild ${{ matrix.os }} (${{ matrix.arch }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          architecture: ${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'x64' }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup MSBuild (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+        with:
+          msbuild-architecture: x64
+
+      - name: Setup Windows ARM64 cross-compilation
+        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
+        run: |
+          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
+          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
+
+      - name: Add setuptools (non-Windows)
+        if: matrix.os != 'windows-latest'
+        run: pip install setuptools
+
+      - name: Add Linux build dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          echo "CFLAGS=${CFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
+          echo "CXXFLAGS=${CXXFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
+
+      - name: Override gnu target for older sysroot (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          mkdir -p "$HOME/.gyp"
+          cat > "$HOME/.gyp/include.gypi" << 'EOF'
+          {
+            "target_defaults": {
+              "conditions": [
+                ["OS=='linux'", {
+                  'cflags_cc!': [ '-std=gnu++20' ],
+                  'cflags_cc': [ '-std=gnu++2a' ],
+                }]
+              ]
+            }
+          }
+          EOF
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Create prebuilds
+        run: npm run prebuild
+        env:
+          npm_config_target_arch: ${{ matrix.arch == 'x86' && 'ia32' || matrix.arch }}
+
+      - name: Test prebuild
+        run: |
+          npm test
+        env:
+          npm_config_target_arch: ${{ matrix.arch == 'x86' && 'ia32' || matrix.arch }}
+
+      - name: Upload prebuilds
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
+          path: prebuilds/
+          retention-days: 7
+
+  release:
+    needs: prebuild
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.tag
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Download all prebuilds
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Organize prebuilds
+        run: |
+          mkdir -p prebuilds
+          find artifacts/ -name "*.tar.gz" -exec cp {} prebuilds/ \;
+          ls -la prebuilds/
+
+      - name: Get release info
+        id: release_info
+        run: |
+          if [ "${{ github.event.inputs.tag }}" != "" ]; then
+            TAG_NAME="${{ github.event.inputs.tag }}"
+            echo "This is a manual release for tag: $TAG_NAME"
+          else
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "release_name=vscode-policy-watcher $TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          release_name: ${{ steps.release_info.outputs.release_name }}
+          body: |
+            ## Changes
+            
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ## Platform-specific binaries
+            
+            This release includes prebuilt binaries for:
+            - Windows (x64, arm64)
+            - macOS (x64, arm64) 
+            - Linux (x64, arm64)
+            
+            The binaries will be automatically downloaded when installing via npm.
+          draft: false
+          prerelease: ${{ contains(steps.release_info.outputs.tag_name, '-') }}
+
+      - name: Upload Release Assets
+        run: |
+          for file in prebuilds/*.tar.gz; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "Uploading $filename..."
+              curl \
+                -X POST \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Content-Type: application/gzip" \
+                --data-binary @"$file" \
+                "${{ steps.create_release.outputs.upload_url }}?name=$filename"
+            fi
+          done
+
+      - name: Publish to npm (if not manual)
+        if: startsWith(github.ref, 'refs/tags/') && !github.event.inputs.tag
+        run: |
+          npm ci --ignore-scripts
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,6 +1,6 @@
 # @vscode/policy-watcher
 
-[![Build Status](https://dev.azure.com/monacotools/Monaco/_apis/build/status/npm/vscode/policy-watcher?repoName=microsoft%2Fvscode-policy-watcher&branchName=main)](https://dev.azure.com/monacotools/Monaco/_build/latest?definitionId=459&repoName=microsoft%2Fvscode-policy-watcher&branchName=main)
+[![CI](https://github.com/microsoft/vscode-policy-watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/vscode-policy-watcher/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/npm/v/@vscode/policy-watcher.svg)](https://npmjs.org/package/@vscode/policy-watcher)
 
 Example usage:
@@ -16,6 +16,53 @@ createWatcher(
   },
   (update) => console.log(update)
 );
+```
+
+## Installation
+
+The package includes prebuilt binaries for the following platforms:
+- Windows (x64, arm64)
+- macOS (x64, arm64)
+- Linux (x64, arm64)
+
+When installing via npm, the appropriate binary will be downloaded automatically. If a prebuilt binary is not available for your platform, the module will be compiled from source.
+
+```bash
+npm install @vscode/policy-watcher
+```
+
+## Development
+
+### Prerequisites
+
+- Node.js 20.x+
+- Python 3.11+
+- Platform-specific build tools:
+  - Windows: Visual Studio Build Tools (x64 and ARM64 cross-compilation)
+  - macOS: Xcode Command Line Tools
+  - Linux: GCC toolchain (Ubuntu 22.04+)
+
+### Building from source
+
+```bash
+# Install dependencies
+npm install
+
+# Build the native module
+npm run rebuild
+
+# Run tests
+npm test
+```
+
+### Creating prebuilt binaries
+
+```bash
+# Build prebuilt binaries for the current platform
+npm run prebuild
+
+# Or use the build script
+node .github/scripts/build.js
 ```
 
 ## Contributing
