@@ -18,54 +18,62 @@
 - More stable builds
 - Future-proof environment
 
-## 🪟 **Windows ARM64 Cross-Compilation Fix**
+## 🛠️ **MSBuild Architecture Configuration**
 
 ### **Issue**
 ```
-Error: spawn UNKNOWN
-    at ChildProcess.spawn (node:internal/child_process:420:11)
+Error: Unable to find MSBuild.
+msbuild-architecture: arm64  # ❌ Wrong!
 ```
 
-**Root Cause**: GitHub Actions `setup-node@v4` doesn't support Windows ARM64 Node.js installation directly.
+**Root Cause**: MSBuild itself should run on x64, only the **target** should be ARM64.
 
 ### **Solution**
-
-#### **1. Use x64 Node.js for building ARM64 targets**
 ```yaml
-# Use x64 Node.js even when targeting ARM64
-architecture: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'x64' || matrix.arch }}
-```
+# ✅ Correct: MSBuild runs on x64, targets ARM64
+- name: Setup MSBuild (Windows)
+  uses: microsoft/setup-msbuild@v1.3
+  with:
+    msbuild-architecture: x64  # MSBuild host architecture
 
-#### **2. Set proper cross-compilation environment variables**
-```yaml
+# Target architecture is set via environment variables
 - name: Setup Windows ARM64 cross-compilation
-  if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
   run: |
     echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
-    echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
-    echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
 ```
 
-### **How It Works**
-
+### **Explanation**
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   x64 Host      │    │  MSVC Toolchain  │    │   ARM64 Binary  │
-│   (Node.js x64) │───▶│  (Cross-compile) │───▶│   (Windows ARM) │
-│                 │    │                  │    │                 │
+│   MSBuild x64   │───▶│  MSVC ARM64      │───▶│   ARM64 Binary  │
+│   (Host Tool)   │    │  (Cross-compiler)│    │   (Target)      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-1. **Host**: x64 Windows runner with x64 Node.js
-2. **Toolchain**: MSVC with ARM64 cross-compiler
-3. **Target**: ARM64 Windows binary
-4. **Environment**: npm configured for ARM64 target
+## 🐧 **Ubuntu ARM64 Node.js Architecture**
 
-### **Alternative Approaches Considered**
+### **Issue**  
+```
+/opt/hostedtoolcache/node/20.19.5/x64/bin/node: 1: Syntax error: ")" unexpected
+```
 
-❌ **Native ARM64 Node.js**: Not supported by setup-node action
-❌ **Manual Node.js installation**: Too complex and unreliable  
-✅ **Cross-compilation with x64 host**: Standard practice, well-supported
+**Root Cause**: Installing x64 Node.js on ARM64 Ubuntu runner.
+
+### **Solution**
+```yaml
+# ✅ Simple and clear architecture mapping
+architecture: ${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'x64' }}
+```
+
+### **Architecture Matrix**
+| Runner | OS | Target Arch | Node.js Arch | MSBuild Arch |
+|--------|----|-------------|--------------|--------------|
+| windows-latest | Windows | x64 | x64 | x64 |
+| windows-latest | Windows | arm64 | **x64** | **x64** |
+| ubuntu-22.04 | Linux | x64 | x64 | N/A |
+| ubuntu-22.04-arm | Linux | arm64 | **arm64** | N/A |
+| macos-latest | macOS | x64 | x64 | N/A |
+| macos-latest | macOS | arm64 | arm64 | N/A |
 
 ## 📊 **Build Matrix Summary**
 

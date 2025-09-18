@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          architecture: ${{ matrix.arch || 'x64' }}
+          architecture: x64
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -98,7 +98,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          architecture: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'x64' || matrix.arch && matrix.arch != 'arm64' && matrix.arch || 'x64' }}
+          architecture: ${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'x64' }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -109,7 +109,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v1.3
         with:
-          msbuild-architecture: ${{ matrix.arch }}
+          msbuild-architecture: x64
 
       - name: Setup Windows ARM64 cross-compilation
         if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
