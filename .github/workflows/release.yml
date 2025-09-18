@@ -33,7 +33,7 @@ jobs:
           - os: macos-latest
             arch: arm64
           # Linux builds
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             arch: x64
           # Linux ARM64 (native)
           - os: ubuntu-22.04-arm
@@ -49,7 +49,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          architecture: ${{ matrix.arch }}
+          architecture: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'x64' || matrix.arch }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -62,18 +62,25 @@ jobs:
         with:
           msbuild-architecture: ${{ matrix.arch }}
 
+      - name: Setup Windows ARM64 cross-compilation
+        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
+        run: |
+          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
+          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
+
       - name: Add setuptools (non-Windows)
         if: matrix.os != 'windows-latest'
         run: pip install setuptools
 
       - name: Add Linux build dependencies
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           echo "CFLAGS=${CFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
           echo "CXXFLAGS=${CXXFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
 
       - name: Override gnu target for older sysroot (Linux)
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           mkdir -p "$HOME/.gyp"
           cat > "$HOME/.gyp/include.gypi" << 'EOF'

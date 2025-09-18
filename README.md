@@ -38,9 +38,9 @@ npm install @vscode/policy-watcher
 - Node.js 20.x+
 - Python 3.11+
 - Platform-specific build tools:
-  - Windows: Visual Studio Build Tools
+  - Windows: Visual Studio Build Tools (x64 and ARM64 cross-compilation)
   - macOS: Xcode Command Line Tools
-  - Linux: GCC toolchain
+  - Linux: GCC toolchain (Ubuntu 22.04+)
 
 ### Building from source
 

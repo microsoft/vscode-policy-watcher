@@ -16,10 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Minimum Node.js version**: 18.x → 20.0.0+
+- **Ubuntu build environment**: 20.04 → 22.04 (more modern toolchain)
 - Migrated from Azure Pipelines to GitHub Actions
 - Updated package.json to support prebuild system
 - Enhanced README with installation and development instructions
 - **Upgraded from QEMU emulation to native ARM64 runners** for 3-4x faster builds
+
+### Fixed
+- **Windows ARM64 build support**: Fixed Node.js setup issues with cross-compilation
+- Improved build environment variables for cross-platform compilation
 
 ### Removed
 - **Windows x86 support** - Replaced with ARM64 support (x64 + arm64 covers modern Windows devices)

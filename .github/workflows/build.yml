@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
         node: [20.x]
         include:
           # Additional Windows configuration for ARM
@@ -82,7 +82,7 @@ jobs:
           - os: macos-latest
             arch: arm64
           # Linux builds
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             arch: x64
           # Linux ARM64 (native)
           - os: ubuntu-22.04-arm
@@ -98,7 +98,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          architecture: ${{ matrix.arch }}
+          architecture: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'x64' || matrix.arch && matrix.arch != 'arm64' && matrix.arch || 'x64' }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -110,6 +110,20 @@ jobs:
         uses: microsoft/setup-msbuild@v1.3
         with:
           msbuild-architecture: ${{ matrix.arch }}
+
+      - name: Setup Windows ARM64 cross-compilation
+        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
+        run: |
+          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
+          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
+
+      - name: Setup Windows ARM64 cross-compilation
+        if: matrix.os == 'windows-latest' && matrix.arch == 'arm64'
+        run: |
+          echo "npm_config_target_arch=arm64" >> $env:GITHUB_ENV
+          echo "npm_config_target_platform=win32" >> $env:GITHUB_ENV
+          echo "npm_config_arch=arm64" >> $env:GITHUB_ENV
 
       - name: Add Linux build dependencies
         if: matrix.os == 'ubuntu-20.04'
