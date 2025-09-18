@@ -1,2 +1,19 @@
 /node_modules
 /build
+
+# Prebuilt binaries (will be included in releases)
+/prebuilds
+
+# Development
+*.log
+npm-debug.log*
+.npm
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

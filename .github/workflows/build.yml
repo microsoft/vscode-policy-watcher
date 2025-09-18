@@ -1,0 +1,203 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, macos-latest, windows-latest]
+        node: [18.x, 20.x]
+        include:
+          # Additional Windows configurations
+          - os: windows-latest
+            node: 20.x
+            arch: x86
+          # Additional macOS configuration for ARM
+          - os: macos-latest
+            node: 20.x
+            arch: arm64
+        exclude:
+          # Reduce matrix size for faster builds on PRs
+          - os: ubuntu-20.04
+            node: 18.x
+          - os: macos-latest
+            node: 18.x
+
+    name: Build on ${{ matrix.os }} (Node ${{ matrix.node }}${{ matrix.arch && format(', {0}', matrix.arch) || '' }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: ${{ matrix.arch || 'x64' }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup MSBuild (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+        with:
+          msbuild-architecture: ${{ matrix.arch || 'x64' }}
+
+      - name: Add setuptools (non-Windows)
+        if: matrix.os != 'windows-latest'
+        run: pip install setuptools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build native addon
+        run: npm run rebuild
+        env:
+          npm_config_build_from_source: true
+
+      - name: Test
+        run: npm test
+
+  prebuild:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows builds
+          - os: windows-latest
+            arch: x64
+          - os: windows-latest
+            arch: x86
+          # macOS builds  
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          # Linux builds
+          - os: ubuntu-20.04
+            arch: x64
+          # Linux ARM64 (native)
+          - os: ubuntu-22.04-arm
+            arch: arm64
+
+    name: Prebuild ${{ matrix.os }} (${{ matrix.arch }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          architecture: ${{ matrix.arch }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup MSBuild (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+        with:
+          msbuild-architecture: ${{ matrix.arch }}
+
+      - name: Add Linux build dependencies
+        if: matrix.os == 'ubuntu-20.04'
+        run: |
+          echo "CFLAGS=${CFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
+          echo "CXXFLAGS=${CXXFLAGS:-} -include ../src/gcc-preinclude.h" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Create prebuilds
+        run: npm run prebuild
+        env:
+          npm_config_target_arch: ${{ matrix.arch == 'x86' && 'ia32' || matrix.arch }}
+
+      - name: Upload prebuilds
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
+          path: prebuilds/
+          retention-days: 7
+
+  # Legacy QEMU build for additional testing (optional)
+  prebuild-linux-arm-legacy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64]
+        variant: [alpine3.15]
+
+    name: Legacy QEMU Build Linux ${{ matrix.arch }} (${{ matrix.variant }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create Dockerfile for ${{ matrix.variant }}
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM --platform=linux/${{ matrix.arch }} node:20-alpine3.15
+          
+          WORKDIR /usr/src/build
+          
+          # Install build dependencies
+          RUN apk add --no-cache python3 make g++ git
+          
+          COPY package*.json ./
+          COPY binding.gyp ./
+          COPY src/ ./src/
+          COPY index.js ./
+          COPY index.d.ts ./
+          
+          RUN npm ci --ignore-scripts
+          RUN npm run prebuild
+          RUN npm test
+          EOF
+
+      - name: Build and test
+        run: |
+          docker buildx build \
+            --platform linux/${{ matrix.arch }} \
+            --output type=local,dest=./output \
+            --no-cache \
+            .
+          
+          # Copy prebuilds from output
+          mkdir -p prebuilds
+          if [ -d "output/usr/src/build/prebuilds" ]; then
+            cp output/usr/src/build/prebuilds/*.tar.gz prebuilds/ || true
+          fi
+
+      - name: Upload prebuilds
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-linux-${{ matrix.arch }}-${{ matrix.variant }}-legacy
+          path: prebuilds/
+          retention-days: 7
