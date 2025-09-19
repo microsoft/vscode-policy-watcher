@@ -94,7 +94,41 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Create prebuilds
-        run: npm run prebuild
+        shell: bash
+        run: |
+          echo "=== Building for ${{ matrix.os }} (${{ matrix.arch }}) ==="
+          
+          # Build only for the specific target architecture instead of using --all
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+              echo "Building Windows ARM64 prebuild"
+              npx prebuild --runtime napi --arch arm64 --verbose --strip
+            else
+              echo "Building Windows x64 prebuild" 
+              npx prebuild --runtime napi --arch x64 --verbose --strip
+            fi
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+              echo "Building macOS ARM64 prebuild"
+              npx prebuild --runtime napi --arch arm64 --verbose --strip
+            else
+              echo "Building macOS x64 prebuild"
+              npx prebuild --runtime napi --arch x64 --verbose --strip  
+            fi
+          elif [[ "${{ matrix.os }}" == "ubuntu-22.04" ]]; then
+            echo "Building Linux x64 prebuild"
+            npx prebuild --runtime napi --arch x64 --verbose --strip
+          elif [[ "${{ matrix.os }}" == "ubuntu-22.04-arm" ]]; then
+            echo "Building Linux ARM64 prebuild" 
+            npx prebuild --runtime napi --arch arm64 --verbose --strip
+          else
+            echo "Unknown OS/arch combination, falling back to default"
+            npm run prebuild
+          fi
+          
+          echo ""
+          echo "Generated prebuilds:"
+          find prebuilds/ -name "*.tar.gz" -exec basename {} \; 2>/dev/null || echo "No prebuilds found"
         env:
           npm_config_target_arch: ${{ (matrix.os == 'windows-latest' && matrix.arch == 'arm64') && 'arm64' || (matrix.arch == 'x86' && 'ia32' || matrix.arch) }}
 
@@ -135,8 +169,53 @@ jobs:
       - name: Organize prebuilds
         run: |
           mkdir -p prebuilds
-          find artifacts/ -name "*.tar.gz" -exec cp {} prebuilds/ \;
+          
+          echo "=== Organizing prebuilds from artifacts ==="
+          echo "Available artifact directories:"
+          ls -la artifacts/
+          echo ""
+          
+          # Process each artifact directory separately to ensure we don't lose any files
+          for artifact_dir in artifacts/*/; do
+            if [ -d "$artifact_dir" ]; then
+              artifact_name=$(basename "$artifact_dir")
+              echo "Processing artifact: $artifact_name"
+              
+              # List contents of this artifact
+              echo "  Contents:"
+              find "$artifact_dir" -type f -name "*.tar.gz" | while read file; do
+                echo "    $(basename "$file")"
+              done
+              
+              # Copy files, checking for duplicates
+              find "$artifact_dir" -name "*.tar.gz" | while read file; do
+                filename=$(basename "$file")
+                if [ -f "prebuilds/$filename" ]; then
+                  echo "  ⚠️  CONFLICT: $filename already exists!"
+                  echo "     This suggests multiple artifacts contain files with the same name"
+                  echo "     Artifact: $artifact_name"
+                  echo "     Keeping both files for investigation..."
+                  cp "$file" "prebuilds/${artifact_name}-${filename}"
+                else
+                  echo "  ✅ Copying: $filename"
+                  cp "$file" "prebuilds/"
+                fi
+              done
+              echo ""
+            fi
+          done
+          
+          echo "=== Final prebuilds directory ==="
           ls -la prebuilds/
+          echo ""
+          total_files=$(find prebuilds/ -name "*.tar.gz" | wc -l)
+          echo "Total prebuild files: $total_files"
+          if [ "$total_files" -ne 6 ]; then
+            echo "⚠️  WARNING: Expected 6 prebuild files but found $total_files"
+            echo "This indicates the naming conflict issue persists"
+          else
+            echo "✅ Success: Found all 6 expected prebuild files"
+          fi
 
       - name: Get release info
         id: release_info
@@ -176,14 +255,45 @@ jobs:
 
       - name: Upload Release Assets
         run: |
-          # Install GitHub CLI for reliable asset upload
+          echo "=== Uploading prebuilds to release ==="
+          
+          # Count total files before upload
+          total_files=$(find prebuilds/ -name "*.tar.gz" | wc -l)
+          echo "Total files to upload: $total_files"
+          
+          if [ "$total_files" -ne 6 ]; then
+            echo "⚠️  WARNING: Expected 6 files but found $total_files"
+            echo "This may indicate the naming conflict was not fully resolved"
+            echo "Files available for upload:"
+            ls -la prebuilds/
+          fi
+          
+          # Upload each file
+          uploaded_count=0
           for file in prebuilds/*.tar.gz; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              echo "Uploading $filename to release..."
-              gh release upload "${{ steps.release_info.outputs.tag_name }}" "$file" --clobber
+              echo "📦 Uploading: $filename"
+              if gh release upload "${{ steps.release_info.outputs.tag_name }}" "$file" --clobber; then
+                echo "  ✅ Successfully uploaded: $filename"
+                uploaded_count=$((uploaded_count + 1))
+              else
+                echo "  ❌ Failed to upload: $filename"
+              fi
             fi
           done
+          
+          echo ""
+          echo "=== Upload Summary ==="
+          echo "Files uploaded: $uploaded_count"
+          echo "Files expected: 6"
+          
+          if [ "$uploaded_count" -eq 6 ]; then
+            echo "✅ SUCCESS: All 6 prebuilds uploaded successfully!"
+          else
+            echo "❌ ISSUE: Only $uploaded_count out of 6 files uploaded"
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
