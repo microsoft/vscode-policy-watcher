@@ -53,11 +53,11 @@ extends:
           - script: npm ci
         testPlatforms:
           - name: Linux
-            nodeVersions: [20.16.x]
+            nodeVersions: [22.x]
           - name: MacOS
-            nodeVersions: [20.16.x]
+            nodeVersions: [22.x]
           - name: Windows
-            nodeVersions: [20.16.x]
+            nodeVersions: [22.x]
         testSteps:
           - task: UsePythonVersion@0
             inputs:

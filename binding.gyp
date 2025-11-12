@@ -57,13 +57,14 @@
                         "VCCLCompilerTool": {
                             'AdditionalOptions': [
                                 '/guard:cf',
-                                '/we4244',
-                                '/we4267',
+                                '/W3',
+                                '/sdl',
                                 '/ZH:SHA_256'
                             ],
                         },
                         'VCLinkerTool': {
                             'AdditionalOptions': [
+                                '/DYNAMICBASE',
                                 '/guard:cf'
                             ]
                         }
