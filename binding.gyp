@@ -22,6 +22,9 @@
                     ],
                     "defines": [
                         "MACOS",
+                    ],
+                    "cflags": [
+                        "-O2", "-D_FORTIFY_SOURCE=2"
                     ]
                 }],
                 ['OS=="mac" and target_arch=="arm64"', {
@@ -35,6 +38,9 @@
                     ],
                     "defines": [
                         "LINUX",
+                    ],
+                    "cflags": [
+                        "-O2", "-D_FORTIFY_SOURCE=2"
                     ]
                 }],
                 ["OS=='win'", {
