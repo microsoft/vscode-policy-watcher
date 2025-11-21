@@ -27,7 +27,7 @@ extends:
         buildSteps:
           - task: UsePythonVersion@0
             inputs:
-              versionSpec: '3.11'
+              versionSpec: '3.13'
           - script: |
               set -e
               includes=$(cat << 'EOF'
@@ -61,7 +61,7 @@ extends:
         testSteps:
           - task: UsePythonVersion@0
             inputs:
-              versionSpec: '3.11'
+              versionSpec: '3.13'
           - script: |
               set -e
               includes=$(cat << 'EOF'
