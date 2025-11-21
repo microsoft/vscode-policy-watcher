@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }} / Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Linux gyp override
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          includes=$(cat << 'EOF'
+          {
+            "target_defaults": {
+              "conditions": [
+                ["OS=='linux'", {
+                  'cflags_cc!': [ '-std=gnu++20' ],
+                  'cflags_cc': [ '-std=gnu++2a' ],
+                }]
+              ]
+            }
+          }
+          EOF
+          )
+          mkdir -p "$HOME/.gyp"
+          echo "$includes" > "$HOME/.gyp/include.gypi"
+
+      - name: Install dependencies
+        run: npm ci
