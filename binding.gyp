@@ -22,6 +22,9 @@
                     ],
                     "defines": [
                         "MACOS",
+                    ],
+                    "cflags": [
+                        "-O2", "-D_FORTIFY_SOURCE=2"
                     ]
                 }],
                 ['OS=="mac" and target_arch=="arm64"', {
@@ -35,6 +38,9 @@
                     ],
                     "defines": [
                         "LINUX",
+                    ],
+                    "cflags": [
+                        "-O2", "-D_FORTIFY_SOURCE=2"
                     ]
                 }],
                 ["OS=='win'", {
@@ -57,13 +63,14 @@
                         "VCCLCompilerTool": {
                             'AdditionalOptions': [
                                 '/guard:cf',
-                                '/we4244',
-                                '/we4267',
+                                '/W3',
+                                '/sdl',
                                 '/ZH:SHA_256'
                             ],
                         },
                         'VCLinkerTool': {
                             'AdditionalOptions': [
+                                '/DYNAMICBASE',
                                 '/guard:cf'
                             ]
                         }
