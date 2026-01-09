@@ -64,8 +64,9 @@
                             'AdditionalOptions': [
                                 '/guard:cf',
                                 '/W3',
-                                '/w34244',
-                                '/w34267',
+                                '/we4146',
+                                '/we4244',
+                                '/we4267',
                                 '/sdl',
                                 '/ZH:SHA_256'
                             ],
