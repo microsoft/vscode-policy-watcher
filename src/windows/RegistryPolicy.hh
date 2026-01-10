@@ -21,7 +21,7 @@ class RegistryPolicy : public Policy
 public:
   RegistryPolicy(const std::string name, const std::string &productName, const std::vector<DWORD>& types)
       : Policy(name),
-        registryKey("Software\\Policies\\Microsoft\\" + productName),
+        registryKey("Software\\Policies\\" + productName),
         supportedTypes(types) {}
 
   PolicyRefreshResult refresh()
