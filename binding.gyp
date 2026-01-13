@@ -24,7 +24,7 @@
                         "MACOS",
                     ],
                     "cflags": [
-                        "-O2", "-D_FORTIFY_SOURCE=2", "-fstack-protector-strong"
+                        "-O2", "-fstack-protector-strong"
                     ]
                 }],
                 ['OS=="mac" and target_arch=="arm64"', {
@@ -40,7 +40,7 @@
                         "LINUX",
                     ],
                     "cflags": [
-                        "-O2", "-D_FORTIFY_SOURCE=2", "-fstack-protector-strong"
+                        "-O2", "-fstack-protector-strong"
                     ]
                 }],
                 ["OS=='win'", {
