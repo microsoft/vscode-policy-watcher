@@ -24,7 +24,7 @@ using namespace Napi;
 class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
-  PolicyWatcher(std::string productName, const Function &okCallback);
+  PolicyWatcher(std::string productName, const Function &okCallback, std::string registryPathPrefix = "Microsoft");
   ~PolicyWatcher();
 
   void AddStringPolicy(const std::string name);
@@ -39,6 +39,7 @@ public:
 
 protected:
   std::string productName;
+  std::string registryPathPrefix;
   std::vector<std::unique_ptr<Policy>> policies;
 
 #ifdef WINDOWS

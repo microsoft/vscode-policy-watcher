@@ -27,7 +27,7 @@ Value CreateWatcher(const CallbackInfo &info)
 #endif
 
   if (info.Length() < 3)
-    throw TypeError::New(env, "Expected 3 arguments");
+    throw TypeError::New(env, "Expected at least 3 arguments");
   else if (!info[0].IsString())
     throw TypeError::New(env, "Expected first arg to be string");
   else if (!info[1].IsObject())
@@ -35,9 +35,22 @@ Value CreateWatcher(const CallbackInfo &info)
   else if (!info[2].IsFunction())
     throw TypeError::New(env, "Expected third arg to be function");
 
+  // Parse optional 4th argument: options object
+  std::string registryPathPrefix = "Microsoft";
+  if (info.Length() >= 4 && info[3].IsObject())
+  {
+    auto options = info[3].As<Object>();
+    if (options.Has("registryPathPrefix"))
+    {
+      auto prefixValue = options.Get("registryPathPrefix");
+      if (prefixValue.IsString())
+        registryPathPrefix = prefixValue.As<String>().Utf8Value();
+    }
+  }
+
   auto rawPolicies = info[1].As<Object>();
   auto policies = std::vector<std::unique_ptr<Policy>>();
-  auto watcher = new PolicyWatcher(info[0].As<String>(), info[2].As<Function>());
+  auto watcher = new PolicyWatcher(info[0].As<String>(), info[2].As<Function>(), registryPathPrefix);
 
   for (auto const &item : rawPolicies)
   {

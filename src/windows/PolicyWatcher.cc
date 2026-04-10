@@ -12,9 +12,10 @@
 
 using namespace Napi;
 
-PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
+PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback, std::string registryPathPrefix)
     : AsyncProgressQueueWorker(okCallback),
-      productName(productName)
+      productName(productName),
+      registryPathPrefix(registryPathPrefix)
 {
 }
 
@@ -30,17 +31,17 @@ PolicyWatcher::~PolicyWatcher()
 
 void PolicyWatcher::AddStringPolicy(const std::string name)
 {
-  policies.push_back(std::make_unique<StringPolicy>(name, productName));
+  policies.push_back(std::make_unique<StringPolicy>(name, productName, registryPathPrefix));
 }
 
 void PolicyWatcher::AddNumberPolicy(const std::string name)
 {
-  policies.push_back(std::make_unique<NumberPolicy>(name, productName));
+  policies.push_back(std::make_unique<NumberPolicy>(name, productName, registryPathPrefix));
 }
 
 void PolicyWatcher::AddBooleanPolicy(const std::string name)
 {
-  policies.push_back(std::make_unique<BooleanPolicy>(name, productName));
+  policies.push_back(std::make_unique<BooleanPolicy>(name, productName, registryPathPrefix));
 }
 
 void PolicyWatcher::OnExecute(Napi::Env env)

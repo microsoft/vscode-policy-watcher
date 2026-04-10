@@ -16,6 +16,7 @@ if (require.main === module) {
       SCMInputFontSize: { type: 'number' },
       DisableFeedback: { type: 'boolean' },
     },
-    msg => console.log(msg)
+    msg => console.log(msg),
+    { registryPathPrefix: 'Microsoft' }  // Software\Policies\Microsoft\CodeOSS
   );
 }
