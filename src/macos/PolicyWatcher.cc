@@ -22,9 +22,10 @@ static void fsevents_callback(ConstFSEventStreamRef streamRef,
     dispatch_semaphore_signal(*sem);
 }
 
-PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
+PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback, std::string registryPathPrefix)
     : AsyncProgressQueueWorker(okCallback),
       productName(productName),
+      registryPathPrefix(registryPathPrefix),
       stream(nullptr),
       sem(nullptr),
       disposed(false)

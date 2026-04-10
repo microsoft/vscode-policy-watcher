@@ -18,6 +18,23 @@ createWatcher(
 );
 ```
 
+### Options
+
+An optional fourth argument can be passed to configure platform-specific behavior:
+
+```js
+createWatcher(
+  "MyApp",
+  { UpdateMode: { type: "string" } },
+  (update) => console.log(update),
+  { registryPathPrefix: "" }  // Software\Policies\MyApp
+);
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `registryPathPrefix` | `"Microsoft"` | Prefix inserted before the product name in the registry path. Default results in `Software\Policies\Microsoft\{productName}`. Set to `""` for `Software\Policies\{productName}`. |
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a

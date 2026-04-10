@@ -27,8 +27,18 @@ export type PolicyUpdate<T extends Policies> = {
         : never));
 };
 
+export interface WatcherOptions {
+  /**
+   * Sets the registry path prefix before the product name.
+   * Defaults to `"Microsoft"`, resulting in `Software\Policies\Microsoft\{productName}`.
+   * Set to `""` for `Software\Policies\{productName}`.
+   */
+  registryPathPrefix?: string;
+}
+
 export function createWatcher<T extends Policies>(
   productName: string,
   policies: T,
-  onDidChange: (update: PolicyUpdate<T>) => void
+  onDidChange: (update: PolicyUpdate<T>) => void,
+  options?: WatcherOptions
 ): Watcher;

@@ -15,7 +15,7 @@ using namespace Napi;
 class BooleanPolicy : public RegistryPolicy<bool>
 {
 public:
-  BooleanPolicy(const std::string& name, const std::string &productName);
+  BooleanPolicy(const std::string& name, const std::string &productName, const std::string &registryPathPrefix = "Microsoft");
 
 protected:
   bool parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
