@@ -35,9 +35,27 @@ Value CreateWatcher(const CallbackInfo &info)
   else if (!info[2].IsFunction())
     throw TypeError::New(env, "Expected third arg to be function");
 
+  std::string registryPath;
+
+  if (info.Length() > 3 && !info[3].IsUndefined())
+  {
+    if (!info[3].IsObject())
+      throw TypeError::New(env, "Expected fourth arg to be object");
+
+    auto rawOptions = info[3].As<Object>();
+    auto rawRegistryPath = rawOptions.Get("registryPath");
+
+    if (!rawRegistryPath.IsUndefined())
+    {
+      if (!rawRegistryPath.IsString())
+        throw TypeError::New(env, "Expected options.registryPath to be string");
+
+      registryPath = rawRegistryPath.As<String>();
+    }
+  }
+
   auto rawPolicies = info[1].As<Object>();
-  auto policies = std::vector<std::unique_ptr<Policy>>();
-  auto watcher = new PolicyWatcher(info[0].As<String>(), info[2].As<Function>());
+  auto watcher = new PolicyWatcher(info[0].As<String>(), info[2].As<Function>(), registryPath);
 
   for (auto const &item : rawPolicies)
   {

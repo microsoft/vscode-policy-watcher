@@ -25,6 +25,11 @@ class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
 {
 public:
   PolicyWatcher(std::string productName, const Function &okCallback);
+  PolicyWatcher(std::string productName, const Function &okCallback, std::string registryPath)
+      : PolicyWatcher(productName, okCallback)
+  {
+    this->registryPath = registryPath;
+  }
   ~PolicyWatcher();
 
   void AddStringPolicy(const std::string name);
@@ -39,6 +44,7 @@ public:
 
 protected:
   std::string productName;
+  std::string registryPath;
   std::vector<std::unique_ptr<Policy>> policies;
 
 #ifdef WINDOWS

@@ -15,7 +15,7 @@ using namespace Napi;
 class StringPolicy : public RegistryPolicy<std::string>
 {
 public:
-  StringPolicy(const std::string name, const std::string &productName);
+  StringPolicy(const std::string name, const std::string &productName, const std::string &registryPath = "");
 
 protected:
   std::string parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;

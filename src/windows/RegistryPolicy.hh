@@ -19,9 +19,9 @@ template <typename T>
 class RegistryPolicy : public Policy
 {
 public:
-  RegistryPolicy(const std::string name, const std::string &productName, const std::vector<DWORD>& types)
+  RegistryPolicy(const std::string name, const std::string &productName, const std::vector<DWORD>& types, const std::string &customRegistryPath = "")
       : Policy(name),
-        registryKey("Software\\Policies\\Microsoft\\" + productName),
+        registryKey(customRegistryPath.empty() ? ("Software\\Policies\\Microsoft\\" + productName) : customRegistryPath),
         supportedTypes(types) {}
 
   PolicyRefreshResult refresh()
