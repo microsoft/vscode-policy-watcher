@@ -18,6 +18,8 @@ createWatcher(
 );
 ```
 
+On Windows, you can optionally pass `{ registryPath: 'Software\\Policies\\GitHubCopilot' }` as a fourth argument to watch a custom registry root.
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a

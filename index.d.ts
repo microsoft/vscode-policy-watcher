@@ -15,6 +15,11 @@ export interface Policies {
   [policyName: string]: StringPolicy | NumberPolicy | BooleanPolicy;
 }
 
+export interface WatcherOptions {
+  /** Windows only: custom registry key path. Defaults to `Software\Policies\Microsoft\<productName>`. */
+  registryPath?: string;
+}
+
 export type PolicyUpdate<T extends Policies> = {
   [K in keyof T]:
     | undefined
@@ -30,5 +35,6 @@ export type PolicyUpdate<T extends Policies> = {
 export function createWatcher<T extends Policies>(
   productName: string,
   policies: T,
-  onDidChange: (update: PolicyUpdate<T>) => void
+  onDidChange: (update: PolicyUpdate<T>) => void,
+  options?: WatcherOptions
 ): Watcher;
