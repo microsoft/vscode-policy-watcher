@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include <napi.h>
+#include <algorithm>
 #include <vector>
 
 #include "Policy.hh"
@@ -67,21 +68,38 @@ Value CreateWatcher(const CallbackInfo &info)
 
     auto rawPolicy = rawPolicyValue.As<Object>();
     auto rawPolicyType = rawPolicy.Get("type");
-
-    if (!rawPolicyType.IsString())
-      throw TypeError::New(env, "Expected policy type to be string");
-
-    auto policyType = std::string(rawPolicyType.As<String>());
-
-    if (policyType == "string") {
-      watcher->AddStringPolicy(rawPolicyName.As<String>());
-    }
-    else if (policyType == "number") {
-      watcher->AddNumberPolicy(rawPolicyName.As<String>());
-    } else if (policyType == "boolean") {
-      watcher->AddBooleanPolicy(rawPolicyName.As<String>());
+    std::vector<std::string> policyTypes;
+    if (rawPolicyType.IsString()) {
+      policyTypes.push_back(std::string(rawPolicyType.As<String>()));
+    } else if (rawPolicyType.IsArray()) {
+      auto rawPolicyTypes = rawPolicyType.As<Array>();
+      if (rawPolicyTypes.Length() == 0)
+        throw TypeError::New(env, "Expected policy type array to be non-empty");
+      for (uint32_t i = 0; i < rawPolicyTypes.Length(); i++) {
+        auto rawType = rawPolicyTypes.Get(i);
+        if (!rawType.IsString())
+          throw TypeError::New(env, "Expected policy type array entries to be strings");
+        auto type = std::string(rawType.As<String>());
+        if (std::find(policyTypes.begin(), policyTypes.end(), type) == policyTypes.end())
+          policyTypes.push_back(type);
+      }
     } else {
-      throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
+      throw TypeError::New(env, "Expected policy type to be a string or non-empty string array");
+    }
+
+    for (const auto &policyType : policyTypes) {
+      if (policyType != "string" && policyType != "number" && policyType != "boolean")
+        throw TypeError::New(env, "Unknown policy type '" + policyType + "'");
+    }
+
+    if (policyTypes.size() > 1) {
+      watcher->AddUnionPolicy(rawPolicyName.As<String>(), policyTypes);
+    } else if (policyTypes[0] == "string") {
+        watcher->AddStringPolicy(rawPolicyName.As<String>());
+    } else if (policyTypes[0] == "number") {
+        watcher->AddNumberPolicy(rawPolicyName.As<String>());
+    } else {
+        watcher->AddBooleanPolicy(rawPolicyName.As<String>());
     }
   }
 

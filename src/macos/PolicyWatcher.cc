@@ -7,6 +7,7 @@
 #include "StringPolicy.hh"
 #include "NumberPolicy.hh"
 #include "BooleanPolicy.hh"
+#include "UnionPolicy.hh"
 #include <thread>
 
 using namespace Napi;
@@ -55,6 +56,11 @@ void PolicyWatcher::AddNumberPolicy(const std::string name)
 void PolicyWatcher::AddBooleanPolicy(const std::string name)
 {
     policies.push_back(std::make_unique<BooleanPolicy>(name, productName));
+}
+
+void PolicyWatcher::AddUnionPolicy(const std::string name, const std::vector<std::string> &types)
+{
+  policies.push_back(std::make_unique<UnionPolicy>(name, productName, types));
 }
 
 void PolicyWatcher::OnExecute(Napi::Env env)

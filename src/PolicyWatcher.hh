@@ -35,6 +35,7 @@ public:
   void AddStringPolicy(const std::string name);
   void AddNumberPolicy(const std::string name);
   void AddBooleanPolicy(const std::string name);
+  void AddUnionPolicy(const std::string name, const std::vector<std::string> &types);
 
   void OnExecute(Napi::Env env);
   void Execute(const ExecutionProgress &progress);
