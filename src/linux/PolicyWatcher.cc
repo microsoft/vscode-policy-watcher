@@ -20,6 +20,7 @@ PolicyWatcher::~PolicyWatcher()
 void PolicyWatcher::AddStringPolicy(const std::string name) {}
 void PolicyWatcher::AddNumberPolicy(const std::string name) {}
 void PolicyWatcher::AddBooleanPolicy(const std::string name) {}
+void PolicyWatcher::AddUnionPolicy(const std::string name, const std::vector<std::string> &types) {}
 void PolicyWatcher::OnExecute(Napi::Env env) {}
 void PolicyWatcher::Execute(const ExecutionProgress &progress) {}
 void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count) {}
