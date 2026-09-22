@@ -31,15 +31,6 @@ public:
 
     PolicyRefreshResult refresh()
     {
-        if (!CFPreferencesAppValueIsForced(key, appID))
-        {
-            if (!value.has_value())
-                return PolicyRefreshResult::NotSet;
-
-            value.reset();
-            return PolicyRefreshResult::Removed;
-        }
-
         auto newValue = read();
 
         // Check for no value or removal
