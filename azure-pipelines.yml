@@ -85,11 +85,6 @@ extends:
             condition: eq(variables['Agent.OS'], 'Linux')
 
           - script: npm ci
-            env:
-              npm_config_disturl: https://electronjs.org/headers
-              npm_config_target: 32.1.2
-              npm_config_runtime: electron
-              npm_config_build_from_source: true
         apiScanSoftwareName: 'vscode-policy-watcher'
         apiScanSoftwareVersion: '1.1'
         publishPackage: ${{ parameters.publishPackage }}
