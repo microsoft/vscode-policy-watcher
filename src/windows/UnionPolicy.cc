@@ -5,6 +5,8 @@
 
 #include "UnionPolicy.hh"
 #include <algorithm>
+#include <cstdint>
+#include <cstring>
 #include <windows.h>
 
 UnionPolicy::UnionPolicy(const std::string name, const std::string &productName, const std::string &customRegistryPath, const std::vector<std::string> &types)
@@ -63,9 +65,23 @@ std::optional<UnionPolicyValue> UnionPolicy::read(HKEY root) const
     return std::nullopt;
 
   if (type == REG_DWORD && acceptsBoolean && size == sizeof(DWORD))
-    return *reinterpret_cast<DWORD *>(buffer.data()) != 0;
-  if (type == REG_QWORD && acceptsNumber && size == sizeof(long long))
-    return static_cast<double>(*reinterpret_cast<long long *>(buffer.data()));
+  {
+    DWORD value;
+    std::memcpy(&value, buffer.data(), sizeof(value));
+    return value != 0;
+  }
+  if (type == REG_DWORD && acceptsNumber && size == sizeof(DWORD))
+  {
+    DWORD value;
+    std::memcpy(&value, buffer.data(), sizeof(value));
+    return static_cast<double>(value);
+  }
+  if (type == REG_QWORD && acceptsNumber && size == sizeof(std::int64_t))
+  {
+    std::int64_t value;
+    std::memcpy(&value, buffer.data(), sizeof(value));
+    return static_cast<double>(value);
+  }
   if ((type == REG_SZ || type == REG_MULTI_SZ) && acceptsString) {
     if (type == REG_SZ && size == 0)
       return std::string();

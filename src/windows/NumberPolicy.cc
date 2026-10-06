@@ -21,7 +21,7 @@ std::optional<long long> NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD b
     return static_cast<long long>(value);
   }
 
-  if (type == REG_QWORD && bufferSize == sizeof(QWORD))
+  if (type == REG_QWORD && bufferSize == sizeof(std::int64_t))
   {
     std::int64_t value;
     std::memcpy(&value, buffer, sizeof(value));
