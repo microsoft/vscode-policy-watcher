@@ -10,7 +10,7 @@ using namespace Napi;
 StringPolicy::StringPolicy(const std::string name, const std::string &productName, const std::string &registryPath)
     : RegistryPolicy(name, productName, {REG_SZ, REG_MULTI_SZ}, registryPath) {}
 
-std::string StringPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
+std::optional<std::string> StringPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
 {
   if (type == REG_MULTI_SZ)
   {

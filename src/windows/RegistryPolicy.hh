@@ -69,7 +69,7 @@ public:
   }
 
 protected:
-  virtual T parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const = 0;
+  virtual std::optional<T> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const = 0;
   virtual Value getJSValue(Env env, T value) const = 0;
 
 private:
@@ -109,7 +109,7 @@ private:
     if (ERROR_SUCCESS != result)
       return std::nullopt;
 
-    return std::optional<T>{parseRegistryValue(buffer.data(), bufferSize, type)};
+    return parseRegistryValue(buffer.data(), bufferSize, type);
   }
 };
 

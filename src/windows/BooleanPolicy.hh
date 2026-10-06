@@ -18,7 +18,7 @@ public:
   BooleanPolicy(const std::string& name, const std::string &productName, const std::string &registryPath = "");
 
 protected:
-  bool parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
+  std::optional<bool> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
   Value getJSValue(Env env, bool value) const;
 };
 

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "BooleanPolicy.hh"
+#include <cstring>
 #include <iostream>
 
 using namespace Napi;
@@ -11,14 +12,15 @@ using namespace Napi;
 BooleanPolicy::BooleanPolicy(const std::string& name, const std::string& productName, const std::string &registryPath)
   : RegistryPolicy(name, productName, {REG_DWORD}, registryPath) {}
 
-bool BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
+std::optional<bool> BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
 {
   if (type != REG_DWORD || bufferSize != sizeof(DWORD))
   {
-    return false;
+    return std::nullopt;
   }
 
-  DWORD value = *reinterpret_cast<DWORD*>(buffer);
+  DWORD value;
+  std::memcpy(&value, buffer, sizeof(value));
   return (value != 0);
 }
 
