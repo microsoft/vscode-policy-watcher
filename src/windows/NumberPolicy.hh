@@ -18,7 +18,7 @@ public:
   NumberPolicy(const std::string name, const std::string &productName, const std::string &registryPath = "");
 
 protected:
-  long long parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
+  std::optional<long long> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
   Value getJSValue(Env env, long long value) const;
 };
 
