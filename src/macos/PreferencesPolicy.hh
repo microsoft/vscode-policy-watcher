@@ -31,22 +31,26 @@ public:
 
     PolicyRefreshResult refresh()
     {
-        auto newValue = read();
+        lastReadStatus = PolicyReadStatus::Missing;
+        auto next = read();
+        if (lastReadStatus == PolicyReadStatus::Error)
+            return PolicyRefreshResult::Unchanged;
 
-        // Check for no value or removal
-        if (!newValue.has_value())
+        const bool nextInvalid = lastReadStatus == PolicyReadStatus::Invalid;
+        if (!next.has_value() || nextInvalid)
         {
-            if (!value.has_value())
-                return PolicyRefreshResult::NotSet;
-
+            const bool changed = value.has_value() || invalid != nextInvalid;
             value.reset();
+            invalid = nextInvalid;
+            if (!changed)
+                return nextInvalid ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet;
             return PolicyRefreshResult::Removed;
         }
 
-        // Is the value updated?
-        if (value != newValue)
+        if (value != next || invalid)
         {
-            value = newValue;
+            value = next;
+            invalid = false;
             return PolicyRefreshResult::Updated;
         }
 
@@ -60,11 +64,18 @@ public:
         return getJSValue(env, *value); // value.value() is only supported after macOS 10.13
     }
 
+    bool isInvalid() const
+    {
+        return invalid;
+    }
+
 protected:
     std::optional<T> value;
     const CFStringRef appID;
     const CFStringRef key;
     virtual Value getJSValue(Env env, T value) const = 0;
+    bool invalid = false;
+    mutable PolicyReadStatus lastReadStatus = PolicyReadStatus::Missing;
     virtual std::optional<T> read() const = 0;
 
 private:

@@ -77,23 +77,26 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
 
     bool update = false;
     updatedPolicies.clear();
-    for (auto &policy : policies)
     {
-      switch (policy->refresh())
+      std::lock_guard<std::mutex> lock(policiesMutex);
+      for (auto &policy : policies)
       {
-      case PolicyRefreshResult::Updated:
-      case PolicyRefreshResult::Removed:
-        updatedPolicies.push_back(policy.get());
-        update = true;
-        break;
-      case PolicyRefreshResult::Unchanged:
-        updatedPolicies.push_back(policy.get());
-        break;
+        switch (policy->refresh())
+        {
+        case PolicyRefreshResult::Updated:
+        case PolicyRefreshResult::Removed:
+          updatedPolicies.push_back(policy.get());
+          update = true;
+          break;
+        case PolicyRefreshResult::Unchanged:
+          updatedPolicies.push_back(policy.get());
+          break;
+        }
       }
     }
 
     if (first || update)
-      progress.Send(&updatedPolicies[0], updatedPolicies.size());
+      progress.Send(updatedPolicies.data(), updatedPolicies.size());
 
     first = false;
 
@@ -108,11 +111,24 @@ void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
 {
   HandleScope scope(Env());
   auto result = Object::New(Env());
+  auto metadata = Object::New(Env());
+  auto invalidPolicies = Array::New(Env());
+  uint32_t invalidPolicyIndex = 0;
 
-  for (size_t i = 0; i < count; i++)
-    result.Set(policies[i]->name, policies[i]->getValue(Env()));
+  {
+    std::lock_guard<std::mutex> lock(policiesMutex);
+    for (const auto &policy : this->policies)
+    {
+      if (policy->isInvalid())
+        invalidPolicies.Set(invalidPolicyIndex++, policy->name);
+    }
+    metadata.Set("invalidPolicies", invalidPolicies);
 
-  Callback().Call(Receiver().Value(), {result});
+    for (size_t i = 0; i < count; i++)
+      result.Set(policies[i]->name, policies[i]->getValue(Env()));
+  }
+
+  Callback().Call(Receiver().Value(), {result, metadata});
 }
 
 void PolicyWatcher::OnOK() {}

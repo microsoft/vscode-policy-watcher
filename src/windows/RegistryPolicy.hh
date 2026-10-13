@@ -27,33 +27,20 @@ public:
   PolicyRefreshResult refresh()
   {
     auto machine = read(HKEY_LOCAL_MACHINE);
-
-    if (machine.has_value())
+    auto next = machine.status == PolicyReadStatus::Value ? machine : read(HKEY_CURRENT_USER);
+    const bool nextInvalid = machine.status == PolicyReadStatus::Invalid || next.status == PolicyReadStatus::Invalid;
+    if (next.status != PolicyReadStatus::Value)
     {
-      if (value != machine)
-      {
-        value = machine;
-        return PolicyRefreshResult::Updated;
-      }
-
-      return PolicyRefreshResult::Unchanged;
+      const bool changed = value.has_value() || invalid != nextInvalid;
+      value.reset();
+      invalid = nextInvalid;
+      return changed ? PolicyRefreshResult::Removed : (nextInvalid ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet);
     }
 
-    auto user = read(HKEY_CURRENT_USER);
-
-    // Check for no value or removal
-    if (!user.has_value())
+    if (value != next.value || invalid != nextInvalid)
     {
-        if (!value.has_value())
-            return PolicyRefreshResult::NotSet;
-
-        value.reset();
-        return PolicyRefreshResult::Removed;
-    }
-
-    if (value != user)
-    {
-      value = user;
+      value = next.value;
+      invalid = nextInvalid;
       return PolicyRefreshResult::Updated;
     }
 
@@ -68,6 +55,11 @@ public:
     return getJSValue(env, value.value());
   }
 
+  bool isInvalid() const
+  {
+    return invalid;
+  }
+
 protected:
   virtual std::optional<T> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const = 0;
   virtual Value getJSValue(Env env, T value) const = 0;
@@ -76,13 +68,15 @@ private:
   const std::string registryKey;
   const std::vector<DWORD> supportedTypes;
   std::optional<T> value;
+  bool invalid = false;
 
-  std::optional<T> read(HKEY root)
+  PolicyReadResult<T> read(HKEY root)
   {
     HKEY hKey;
 
-    if (ERROR_SUCCESS != RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &hKey))
-      return std::nullopt;
+    auto openResult = RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &hKey);
+    if (ERROR_SUCCESS != openResult)
+      return {openResult == ERROR_FILE_NOT_FOUND ? PolicyReadStatus::Missing : PolicyReadStatus::Error, std::nullopt};
 
     DWORD bufferSize = 0;
     DWORD type;
@@ -90,16 +84,22 @@ private:
     // First query to get required buffer size
     auto result = RegQueryValueEx(hKey, name.c_str(), 0, &type, nullptr, &bufferSize);
 
+    if (ERROR_FILE_NOT_FOUND == result)
+    {
+      RegCloseKey(hKey);
+      return {PolicyReadStatus::Missing, std::nullopt};
+    }
+
     if (ERROR_SUCCESS != result && ERROR_MORE_DATA != result)
     {
       RegCloseKey(hKey);
-      return std::nullopt;
+      return {PolicyReadStatus::Error, std::nullopt};
     }
 
     if (std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
     {
       RegCloseKey(hKey);
-      return std::nullopt;
+      return {PolicyReadStatus::Invalid, std::nullopt};
     }
 
     std::vector<BYTE> buffer(bufferSize);
@@ -107,9 +107,10 @@ private:
     RegCloseKey(hKey);
 
     if (ERROR_SUCCESS != result)
-      return std::nullopt;
+      return {PolicyReadStatus::Error, std::nullopt};
 
-    return parseRegistryValue(buffer.data(), bufferSize, type);
+    auto value = parseRegistryValue(buffer.data(), bufferSize, type);
+    return {value.has_value() ? PolicyReadStatus::Value : PolicyReadStatus::Invalid, value};
   }
 };
 

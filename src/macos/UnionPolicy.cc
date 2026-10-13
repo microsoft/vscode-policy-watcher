@@ -27,11 +27,20 @@ UnionPolicy::~UnionPolicy()
 PolicyRefreshResult UnionPolicy::refresh()
 {
   auto next = read();
-  if (value == next)
+  if (next.status == PolicyReadStatus::Error)
+    return PolicyRefreshResult::Unchanged;
+  const bool nextInvalid = next.status == PolicyReadStatus::Invalid;
+  if (next.status == PolicyReadStatus::Missing || nextInvalid) {
+    const bool changed = value.has_value() || invalid != nextInvalid;
+    value.reset();
+    invalid = nextInvalid;
+    return changed ? PolicyRefreshResult::Removed : (nextInvalid ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet);
+  }
+  if (value == next.value && !invalid)
     return value.has_value() ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet;
-  auto removed = value.has_value() && !next.has_value();
-  value = next;
-  return removed ? PolicyRefreshResult::Removed : PolicyRefreshResult::Updated;
+  value = next.value;
+  invalid = false;
+  return PolicyRefreshResult::Updated;
 }
 
 Napi::Value UnionPolicy::getValue(Napi::Env env) const
@@ -45,13 +54,18 @@ Napi::Value UnionPolicy::getValue(Napi::Env env) const
   return Napi::String::New(env, std::get<std::string>(*value));
 }
 
-std::optional<UnionPolicyValue> UnionPolicy::read() const
+bool UnionPolicy::isInvalid() const
+{
+  return invalid;
+}
+
+PolicyReadResult<UnionPolicyValue> UnionPolicy::read() const
 {
   if (!CFPreferencesAppValueIsForced(key, appID))
-    return std::nullopt;
+    return {PolicyReadStatus::Missing, std::nullopt};
   auto pref = CFPreferencesCopyAppValue(key, appID);
   if (pref == nullptr)
-    return std::nullopt;
+    return {PolicyReadStatus::Missing, std::nullopt};
 
   std::optional<UnionPolicyValue> result;
   auto type = CFGetTypeID(pref);
@@ -69,5 +83,5 @@ std::optional<UnionPolicyValue> UnionPolicy::read() const
       result = std::string(buffer.data());
   }
   CFRelease(pref);
-  return result;
+  return {result.has_value() ? PolicyReadStatus::Value : PolicyReadStatus::Invalid, result};
 }

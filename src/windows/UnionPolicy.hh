@@ -21,14 +21,16 @@ public:
   UnionPolicy(const std::string name, const std::string &productName, const std::string &registryPath, const std::vector<std::string> &types);
   PolicyRefreshResult refresh();
   Napi::Value getValue(Napi::Env env) const;
+  bool isInvalid() const;
 
 private:
-  std::optional<UnionPolicyValue> read(HKEY root) const;
+  PolicyReadResult<UnionPolicyValue> read(HKEY root) const;
   const std::string registryKey;
   bool acceptsBoolean = false;
   bool acceptsNumber = false;
   bool acceptsString = false;
   std::optional<UnionPolicyValue> value;
+  bool invalid = false;
 };
 
 #endif

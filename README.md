@@ -21,6 +21,16 @@ createWatcher(
 On Windows, you can optionally pass `{ registryPath: 'Software\\Policies\\GitHubCopilot' }` as a fourth argument to watch a custom registry root.
 Number policies accept both `REG_DWORD` and `REG_QWORD` registry values.
 
+The watcher callback receives a second metadata argument:
+
+```js
+(update, { invalidPolicies }) => { /* ... */ }
+```
+
+`invalidPolicies` lists policy names that are present in the native policy store but whose
+value does not match the declared policy type. Their corresponding value in `update` is
+`undefined`. An absent policy is not invalid. Existing one-argument callbacks continue to work.
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a

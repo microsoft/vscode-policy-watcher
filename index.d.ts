@@ -30,6 +30,11 @@ export type PolicyUpdate<T extends Policies> = {
           : PolicyTypeValue<T[K]["type"]>);
 };
 
+export interface PolicyUpdateMetadata {
+  /** Names whose native policy values are present but do not match their declared type. */
+  readonly invalidPolicies: readonly string[];
+}
+
 type PolicyTypeValue<T extends PolicyType> =
     T extends "string" ? string :
     T extends "boolean" ? boolean :
@@ -39,6 +44,6 @@ type PolicyTypeValue<T extends PolicyType> =
 export function createWatcher<T extends Policies>(
   productName: string,
   policies: T,
-  onDidChange: (update: PolicyUpdate<T>) => void,
+  onDidChange: (update: PolicyUpdate<T>, metadata: PolicyUpdateMetadata) => void,
   options?: WatcherOptions
 ): Watcher;

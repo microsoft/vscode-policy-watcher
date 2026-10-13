@@ -27,6 +27,7 @@ std::optional<std::string> StringPolicy::read() const
   if (CFGetTypeID(pref) != CFStringGetTypeID())
   {
     CFRelease(pref);
+    lastReadStatus = PolicyReadStatus::Invalid;
     return std::nullopt;
   }
 
@@ -38,9 +39,11 @@ std::optional<std::string> StringPolicy::read() const
   {
     std::string result(buffer.data());
     CFRelease(pref);
+    lastReadStatus = PolicyReadStatus::Value;
     return result;
   }
 
   CFRelease(pref);
+  lastReadStatus = PolicyReadStatus::Error;
   return std::nullopt;
 }

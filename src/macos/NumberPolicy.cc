@@ -27,6 +27,7 @@ std::optional<long long> NumberPolicy::read() const
   if (CFGetTypeID(pref) != CFNumberGetTypeID())
   {
     CFRelease(pref);
+    lastReadStatus = PolicyReadStatus::Invalid;
     return std::nullopt;
   }
 
@@ -34,9 +35,11 @@ std::optional<long long> NumberPolicy::read() const
   if (CFNumberGetValue((CFNumberRef)pref, kCFNumberLongLongType, &value))
   {
     CFRelease(pref);
+    lastReadStatus = PolicyReadStatus::Value;
     return value;
   }
 
   CFRelease(pref);
+  lastReadStatus = PolicyReadStatus::Error;
   return std::nullopt;
 }

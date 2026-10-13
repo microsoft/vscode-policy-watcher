@@ -22,15 +22,22 @@ UnionPolicy::UnionPolicy(const std::string name, const std::string &productName,
 
 PolicyRefreshResult UnionPolicy::refresh()
 {
-  auto next = read(HKEY_LOCAL_MACHINE);
-  if (!next.has_value())
+  auto machine = read(HKEY_LOCAL_MACHINE);
+  auto next = machine;
+  if (machine.status != PolicyReadStatus::Value)
     next = read(HKEY_CURRENT_USER);
-
-  if (value == next)
-    return value.has_value() ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet;
-  auto removed = value.has_value() && !next.has_value();
-  value = next;
-  return removed ? PolicyRefreshResult::Removed : PolicyRefreshResult::Updated;
+  const bool nextInvalid = machine.status == PolicyReadStatus::Invalid || next.status == PolicyReadStatus::Invalid;
+  if (next.status != PolicyReadStatus::Value) {
+    const bool changed = value.has_value() || invalid != nextInvalid;
+    value.reset();
+    invalid = nextInvalid;
+    return changed ? PolicyRefreshResult::Removed : (nextInvalid ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet);
+  }
+  if (value == next.value && invalid == nextInvalid)
+    return PolicyRefreshResult::Unchanged;
+  value = next.value;
+  invalid = nextInvalid;
+  return PolicyRefreshResult::Updated;
 }
 
 Napi::Value UnionPolicy::getValue(Napi::Env env) const
@@ -44,55 +51,65 @@ Napi::Value UnionPolicy::getValue(Napi::Env env) const
   return Napi::String::New(env, std::get<std::string>(*value));
 }
 
-std::optional<UnionPolicyValue> UnionPolicy::read(HKEY root) const
+bool UnionPolicy::isInvalid() const
+{
+  return invalid;
+}
+
+PolicyReadResult<UnionPolicyValue> UnionPolicy::read(HKEY root) const
 {
   HKEY key;
-  if (RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
-    return std::nullopt;
+  auto openStatus = RegOpenKeyEx(root, registryKey.c_str(), 0, KEY_READ, &key);
+  if (openStatus != ERROR_SUCCESS)
+    return {openStatus == ERROR_FILE_NOT_FOUND ? PolicyReadStatus::Missing : PolicyReadStatus::Error, std::nullopt};
 
   DWORD type;
   DWORD size = 0;
   auto status = RegQueryValueEx(key, name.c_str(), nullptr, &type, nullptr, &size);
+  if (status == ERROR_FILE_NOT_FOUND) {
+    RegCloseKey(key);
+    return {PolicyReadStatus::Missing, std::nullopt};
+  }
   if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
     RegCloseKey(key);
-    return std::nullopt;
+    return {PolicyReadStatus::Error, std::nullopt};
   }
 
   std::vector<BYTE> buffer(size);
   status = RegQueryValueEx(key, name.c_str(), nullptr, &type, buffer.data(), &size);
   RegCloseKey(key);
   if (status != ERROR_SUCCESS)
-    return std::nullopt;
+    return {PolicyReadStatus::Error, std::nullopt};
 
   if (type == REG_DWORD && acceptsBoolean && size == sizeof(DWORD))
   {
     DWORD value;
     std::memcpy(&value, buffer.data(), sizeof(value));
-    return value != 0;
+    return {PolicyReadStatus::Value, value != 0};
   }
   if (type == REG_DWORD && acceptsNumber && size == sizeof(DWORD))
   {
     DWORD value;
     std::memcpy(&value, buffer.data(), sizeof(value));
-    return static_cast<double>(value);
+    return {PolicyReadStatus::Value, static_cast<double>(value)};
   }
   if (type == REG_QWORD && acceptsNumber && size == sizeof(std::int64_t))
   {
     std::int64_t value;
     std::memcpy(&value, buffer.data(), sizeof(value));
-    return static_cast<double>(value);
+    return {PolicyReadStatus::Value, static_cast<double>(value)};
   }
   if ((type == REG_SZ || type == REG_MULTI_SZ) && acceptsString) {
     if (type == REG_SZ && size == 0)
-      return std::string();
+      return {PolicyReadStatus::Value, std::string()};
     const char *begin = reinterpret_cast<char *>(buffer.data());
     const char *end = begin + size;
     if (type == REG_SZ) {
       const char *terminator = std::find(begin, end, '\0');
-      return std::string(begin, terminator);
+      return {PolicyReadStatus::Value, std::string(begin, terminator)};
     }
     if (size < 2 || end[-1] != '\0' || end[-2] != '\0')
-      return std::nullopt;
+      return {PolicyReadStatus::Invalid, std::nullopt};
     std::string result;
     const char *current = begin;
     while (current < end && *current != '\0') {
@@ -102,7 +119,7 @@ std::optional<UnionPolicyValue> UnionPolicy::read(HKEY root) const
       result.append(current, terminator);
       current = terminator == end ? end : terminator + 1;
     }
-    return result;
+    return {PolicyReadStatus::Value, result};
   }
-  return std::nullopt;
+  return {PolicyReadStatus::Invalid, std::nullopt};
 }

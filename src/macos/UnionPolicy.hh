@@ -22,15 +22,17 @@ public:
   ~UnionPolicy();
   PolicyRefreshResult refresh();
   Napi::Value getValue(Napi::Env env) const;
+  bool isInvalid() const;
 
 private:
-  std::optional<UnionPolicyValue> read() const;
+  PolicyReadResult<UnionPolicyValue> read() const;
   CFStringRef appID;
   CFStringRef key;
   bool acceptsBoolean = false;
   bool acceptsNumber = false;
   bool acceptsString = false;
   std::optional<UnionPolicyValue> value;
+  bool invalid = false;
 };
 
 #endif

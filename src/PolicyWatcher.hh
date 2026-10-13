@@ -7,6 +7,7 @@
 #define POLICY_WATCHER_H
 
 #include <napi.h>
+#include <mutex>
 #include <vector>
 #include "Policy.hh"
 
@@ -47,6 +48,7 @@ protected:
   std::string productName;
   std::string registryPath;
   std::vector<std::unique_ptr<Policy>> policies;
+  std::mutex policiesMutex;
 
 #ifdef WINDOWS
   HANDLE handles[4];

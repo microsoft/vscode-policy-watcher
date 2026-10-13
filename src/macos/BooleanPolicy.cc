@@ -27,10 +27,12 @@ std::optional<bool> BooleanPolicy::read() const
   if (CFGetTypeID(pref) != CFBooleanGetTypeID())
   {
     CFRelease(pref);
+    lastReadStatus = PolicyReadStatus::Invalid;
     return std::nullopt;
   }
 
   bool value = (pref == kCFBooleanTrue);
   CFRelease(pref);
+  lastReadStatus = PolicyReadStatus::Value;
   return value;
 }
