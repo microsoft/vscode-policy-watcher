@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include <userenv.h>
+#include <utility>
 
 #include "../PolicyWatcher.hh"
 #include "StringPolicy.hh"
@@ -11,73 +12,147 @@
 #include "BooleanPolicy.hh"
 #include "UnionPolicy.hh"
 
-using namespace Napi;
-
-PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
-    : AsyncProgressQueueWorker(okCallback),
-      productName(productName)
+PolicyWatcher::PolicyWatcher(const std::string &productName, const Napi::Function &okCallback, const std::string &registryPath)
+    : env(okCallback.Env()),
+      productName(productName),
+      registryPath(registryPath),
+      callbackRef(Napi::Persistent(okCallback))
 {
 }
 
 PolicyWatcher::~PolicyWatcher()
 {
-  UnregisterGPNotification(handles[2]);
-  UnregisterGPNotification(handles[3]);
-  CloseHandle(handles[0]);
-  CloseHandle(handles[1]);
-  CloseHandle(handles[2]);
-  CloseHandle(handles[3]);
+  napi_remove_env_cleanup_hook(env, OnEnvCleanup, this);
+  Dispose();
+  if (workerThread.joinable())
+  {
+    workerThread.join();
+  }
+  if (handles[2])
+  {
+    UnregisterGPNotification(handles[2]);
+  }
+  if (handles[3])
+  {
+    UnregisterGPNotification(handles[3]);
+  }
+  for (HANDLE handle : handles)
+  {
+    if (handle)
+    {
+      CloseHandle(handle);
+    }
+  }
 }
 
-void PolicyWatcher::AddStringPolicy(const std::string name)
+void PolicyWatcher::AddStringPolicy(const std::string &name)
 {
   policies.push_back(std::make_unique<StringPolicy>(name, productName, registryPath));
 }
 
-void PolicyWatcher::AddNumberPolicy(const std::string name)
+void PolicyWatcher::AddNumberPolicy(const std::string &name)
 {
   policies.push_back(std::make_unique<NumberPolicy>(name, productName, registryPath));
 }
 
-void PolicyWatcher::AddBooleanPolicy(const std::string name)
+void PolicyWatcher::AddBooleanPolicy(const std::string &name)
 {
   policies.push_back(std::make_unique<BooleanPolicy>(name, productName, registryPath));
 }
 
-void PolicyWatcher::AddUnionPolicy(const std::string name, const std::vector<std::string> &types)
+void PolicyWatcher::AddUnionPolicy(const std::string &name, const std::vector<std::string> &types)
 {
   policies.push_back(std::make_unique<UnionPolicy>(name, productName, registryPath, types));
 }
 
-void PolicyWatcher::OnExecute(Napi::Env env)
+bool PolicyWatcher::Start(Napi::Env env)
 {
-  if ((handles[0] = CreateEvent(NULL, false, false, NULL)) == NULL)
-    return SetError("Failed to create exit event");
-  if ((handles[1] = CreateEvent(NULL, false, false, NULL)) == NULL)
-    return SetError("Failed to create dispose event");
-  if ((handles[2] = CreateEvent(NULL, false, false, NULL)) == NULL)
-    return SetError("Failed to create machine GP event");
-  if ((handles[3] = CreateEvent(NULL, false, false, NULL)) == NULL)
-    return SetError("Failed to create user GP event");
+  if ((handles[0] = CreateEvent(nullptr, FALSE, FALSE, nullptr)) == nullptr)
+  {
+    Napi::Error::New(env, "Failed to create exit event").ThrowAsJavaScriptException();
+    return false;
+  }
+  if ((handles[1] = CreateEvent(nullptr, FALSE, FALSE, nullptr)) == nullptr)
+  {
+    Napi::Error::New(env, "Failed to create dispose event").ThrowAsJavaScriptException();
+    return false;
+  }
+  if ((handles[2] = CreateEvent(nullptr, FALSE, FALSE, nullptr)) == nullptr)
+  {
+    Napi::Error::New(env, "Failed to create machine GP event").ThrowAsJavaScriptException();
+    return false;
+  }
+  if ((handles[3] = CreateEvent(nullptr, FALSE, FALSE, nullptr)) == nullptr)
+  {
+    Napi::Error::New(env, "Failed to create user GP event").ThrowAsJavaScriptException();
+    return false;
+  }
   if (!RegisterGPNotification(handles[2], TRUE))
-    return SetError("Failed to register machine GP event");
+  {
+    Napi::Error::New(env, "Failed to register machine GP event").ThrowAsJavaScriptException();
+    return false;
+  }
   if (!RegisterGPNotification(handles[3], FALSE))
-    return SetError("Failed to register user GP event");
+  {
+    Napi::Error::New(env, "Failed to register user GP event").ThrowAsJavaScriptException();
+    return false;
+  }
 
-  AsyncProgressQueueWorker::OnExecute(env);
+  updatedPolicies.reserve(policies.size());
+  tsfn = TSFN::New(
+      env,
+      callbackRef.Value(),
+      "PolicyWatcher",
+      0,
+      1,
+      this,
+      [](Napi::Env, void *, PolicyWatcher *watcher) {
+        delete watcher;
+      },
+      static_cast<void *>(nullptr));
+  callbackRef.Reset();
+  workerThread = std::thread(&PolicyWatcher::Execute, this);
+  napi_add_env_cleanup_hook(env, OnEnvCleanup, this);
+  return true;
 }
 
-void PolicyWatcher::Execute(const ExecutionProgress &progress)
+void PolicyWatcher::OnEnvCleanup(void *arg)
 {
-  bool first = true;
-
-  while (TRUE)
+  auto *watcher = static_cast<PolicyWatcher *>(arg);
+  watcher->Dispose();
+  if (watcher->workerThread.joinable())
   {
-    std::vector<const Policy *> updatedPolicies;
+    watcher->workerThread.join();
+  }
+}
 
-    bool update = false;
+void PolicyWatcher::Execute()
+{
+  RefreshPolicies(true);
+
+  while (!disposed.load(std::memory_order_acquire))
+  {
+    auto dwResult = WaitForMultipleObjects(static_cast<DWORD>(handles.size()), handles.data(), FALSE, INFINITE);
+
+    if (dwResult == WAIT_FAILED || (dwResult - WAIT_OBJECT_0) == 0 || (dwResult - WAIT_OBJECT_0) == 1 /* someone called dispose() */)
+    {
+      break;
+    }
+
+    RefreshPolicies(false);
+  }
+
+  tsfn.Release();
+}
+
+void PolicyWatcher::RefreshPolicies(bool first)
+{
+  bool shouldNotify = false;
+  {
+    std::scoped_lock lock(mutex);
     updatedPolicies.clear();
-    for (auto &policy : policies)
+    bool update = false;
+    for (const auto &policy : policies)
     {
       switch (policy->refresh())
       {
@@ -89,35 +164,47 @@ void PolicyWatcher::Execute(const ExecutionProgress &progress)
       case PolicyRefreshResult::Unchanged:
         updatedPolicies.push_back(policy.get());
         break;
+      case PolicyRefreshResult::NotSet:
+        break;
       }
     }
+    shouldNotify = first || update;
+  }
 
-    if (first || update)
-      progress.Send(&updatedPolicies[0], updatedPolicies.size());
-
-    first = false;
-
-    auto dwResult = WaitForMultipleObjects(4, handles, FALSE, INFINITE);
-
-    if (dwResult == WAIT_FAILED || (dwResult - WAIT_OBJECT_0) == 0 || (dwResult - WAIT_OBJECT_0) == 1 /* someone called dispose() */)
-      break;
+  if (shouldNotify)
+  {
+    tsfn.NonBlockingCall();
   }
 }
 
-void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count)
+void PolicyWatcher::CallJS(Napi::Env env, Napi::Function callback, PolicyWatcher *context, void * /*data*/)
 {
-  HandleScope scope(Env());
-  auto result = Object::New(Env());
+  if (env == nullptr || callback == nullptr || context->disposed.load(std::memory_order_acquire))
+  {
+    return;
+  }
 
-  for (size_t i = 0; i < count; i++)
-    result.Set(policies[i]->name, policies[i]->getValue(Env()));
+  Napi::HandleScope scope(env);
+  auto result = Napi::Object::New(env);
 
-  Callback().Call(Receiver().Value(), {result});
+  {
+    std::scoped_lock lock(context->mutex);
+    for (const auto *policy : context->updatedPolicies)
+    {
+      result.Set(policy->name, policy->getValue(env));
+    }
+  }
+
+  callback.Call({result});
 }
-
-void PolicyWatcher::OnOK() {}
 
 void PolicyWatcher::Dispose()
 {
-  SetEvent(handles[1]);
+  if (!disposed.exchange(true, std::memory_order_acq_rel))
+  {
+    if (handles[1])
+    {
+      SetEvent(handles[1]);
+    }
+  }
 }

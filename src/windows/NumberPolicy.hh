@@ -7,19 +7,18 @@
 #define NUMBER_POLICY_H
 
 #include <napi.h>
+#include <string>
 #include <windows.h>
 #include "RegistryPolicy.hh"
-
-using namespace Napi;
 
 class NumberPolicy : public RegistryPolicy<long long>
 {
 public:
-  NumberPolicy(const std::string name, const std::string &productName, const std::string &registryPath = "");
+  NumberPolicy(const std::string &name, const std::string &productName, const std::string &registryPath = "");
 
 protected:
-  std::optional<long long> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
-  Value getJSValue(Env env, long long value) const;
+  std::optional<long long> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const override;
+  Napi::Value getJSValue(Napi::Env env, const long long &value) const override;
 };
 
 #endif

@@ -7,8 +7,7 @@
 #define POLICY_H
 
 #include <napi.h>
-
-using namespace Napi;
+#include <string>
 
 enum class PolicyRefreshResult {
   Updated,
@@ -20,12 +19,12 @@ enum class PolicyRefreshResult {
 class Policy
 {
 public:
-  virtual ~Policy() {}
+  virtual ~Policy() = default;
   virtual PolicyRefreshResult refresh() = 0;
-  virtual Value getValue(Env env) const = 0;
+  virtual Napi::Value getValue(Napi::Env env) const = 0;
   const std::string name;
 
-  Policy(const std::string name)
+  explicit Policy(const std::string &name)
       : name(name) {}
 };
 

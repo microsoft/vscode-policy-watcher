@@ -6,7 +6,7 @@
                 "src/main.cc"
             ],
             "dependencies": [
-                "<!(node -p \"require('node-addon-api').targets\"):node_addon_api_except"
+                "<!(node -p \"require('node-addon-api').targets\"):node_addon_api"
             ],
             "include_dirs": [
                 "<!(node -p \"require('node-addon-api').include_dir\")"
@@ -26,7 +26,10 @@
                     ],
                     "cflags": [
                         "-O2", "-fstack-protector-strong"
-                    ]
+                    ],
+                    "xcode_settings": {
+                        "CLANG_CXX_LANGUAGE_STANDARD": "gnu++20"
+                    }
                 }],
                 ['OS=="mac" and target_arch=="arm64"', {
                     "xcode_settings": {
@@ -64,6 +67,7 @@
                     "msvs_settings": {
                         "VCCLCompilerTool": {
                             'AdditionalOptions': [
+                                '/std:c++20',
                                 '/guard:cf',
                                 '/W3',
                                 '/we4146',

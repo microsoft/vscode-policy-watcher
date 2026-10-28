@@ -4,25 +4,24 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "../PolicyWatcher.hh"
+#include <utility>
 
-using namespace Napi;
-
-PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
-    : AsyncProgressQueueWorker(okCallback),
-      productName(productName)
+PolicyWatcher::PolicyWatcher(const std::string &productName, const Napi::Function &okCallback, const std::string &registryPath)
+    : env(okCallback.Env()),
+      productName(productName),
+      registryPath(registryPath)
 {
 }
 
-PolicyWatcher::~PolicyWatcher()
-{
-}
+PolicyWatcher::~PolicyWatcher() = default;
 
-void PolicyWatcher::AddStringPolicy(const std::string name) {}
-void PolicyWatcher::AddNumberPolicy(const std::string name) {}
-void PolicyWatcher::AddBooleanPolicy(const std::string name) {}
-void PolicyWatcher::AddUnionPolicy(const std::string name, const std::vector<std::string> &types) {}
-void PolicyWatcher::OnExecute(Napi::Env env) {}
-void PolicyWatcher::Execute(const ExecutionProgress &progress) {}
-void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count) {}
-void PolicyWatcher::OnOK() {}
+void PolicyWatcher::AddStringPolicy(const std::string & /*name*/) {}
+void PolicyWatcher::AddNumberPolicy(const std::string & /*name*/) {}
+void PolicyWatcher::AddBooleanPolicy(const std::string & /*name*/) {}
+void PolicyWatcher::AddUnionPolicy(const std::string & /*name*/, const std::vector<std::string> & /*types*/) {}
+bool PolicyWatcher::Start(Napi::Env /*env*/) { return true; }
+void PolicyWatcher::Execute() {}
+void PolicyWatcher::RefreshPolicies(bool /*first*/) {}
+void PolicyWatcher::CallJS(Napi::Env /*env*/, Napi::Function /*callback*/, PolicyWatcher * /*context*/, void * /*data*/) {}
+void PolicyWatcher::OnEnvCleanup(void * /*arg*/) {}
 void PolicyWatcher::Dispose() {}

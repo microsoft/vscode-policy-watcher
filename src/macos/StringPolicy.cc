@@ -5,23 +5,21 @@
 
 #include "StringPolicy.hh"
 
-using namespace Napi;
-
-StringPolicy::StringPolicy(const std::string name, const std::string &productName)
+StringPolicy::StringPolicy(const std::string &name, const std::string &productName)
     : PreferencesPolicy(name, productName)
 {
 }
 
-Value StringPolicy::getJSValue(Env env, std::string value) const
+Napi::Value StringPolicy::getJSValue(Napi::Env env, const std::string &value) const
 {
-  return String::New(env, value);
+  return Napi::String::New(env, value);
 }
 
 std::optional<std::string> StringPolicy::read() const
 {
   auto pref = CFPreferencesCopyAppValue(key, appID);
 
-  if (pref == NULL)
+  if (pref == nullptr)
     return std::nullopt;
 
   if (CFGetTypeID(pref) != CFStringGetTypeID())
@@ -30,13 +28,14 @@ std::optional<std::string> StringPolicy::read() const
     return std::nullopt;
   }
 
-  CFIndex length = CFStringGetLength((CFStringRef)pref);
+  auto strRef = static_cast<CFStringRef>(pref);
+  CFIndex length = CFStringGetLength(strRef);
   CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-  std::vector<char> buffer(maxSize);
+  std::string result(static_cast<size_t>(maxSize), '\0');
 
-  if (CFStringGetCString((CFStringRef)pref, buffer.data(), maxSize, kCFStringEncodingUTF8))
+  if (CFStringGetCString(strRef, result.data(), maxSize, kCFStringEncodingUTF8))
   {
-    std::string result(buffer.data());
+    result.resize(std::char_traits<char>::length(result.data()));
     CFRelease(pref);
     return result;
   }

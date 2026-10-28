@@ -8,23 +8,23 @@
 
 #include <napi.h>
 #include <windows.h>
-#include <optional>
-#include <vector>
 #include <algorithm>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 #include "../Policy.hh"
-
-using namespace Napi;
 
 template <typename T>
 class RegistryPolicy : public Policy
 {
 public:
-  RegistryPolicy(const std::string name, const std::string &productName, const std::vector<DWORD>& types, const std::string &customRegistryPath = "")
+  RegistryPolicy(const std::string &name, const std::string &productName, const std::vector<DWORD> &types, const std::string &customRegistryPath = "")
       : Policy(name),
         registryKey(customRegistryPath.empty() ? ("Software\\Policies\\Microsoft\\" + productName) : customRegistryPath),
         supportedTypes(types) {}
 
-  PolicyRefreshResult refresh()
+  PolicyRefreshResult refresh() override
   {
     auto machine = read(HKEY_LOCAL_MACHINE);
 
@@ -32,7 +32,7 @@ public:
     {
       if (value != machine)
       {
-        value = machine;
+        value = std::move(machine);
         return PolicyRefreshResult::Updated;
       }
 
@@ -44,23 +44,23 @@ public:
     // Check for no value or removal
     if (!user.has_value())
     {
-        if (!value.has_value())
-            return PolicyRefreshResult::NotSet;
+      if (!value.has_value())
+        return PolicyRefreshResult::NotSet;
 
-        value.reset();
-        return PolicyRefreshResult::Removed;
+      value.reset();
+      return PolicyRefreshResult::Removed;
     }
 
     if (value != user)
     {
-      value = user;
+      value = std::move(user);
       return PolicyRefreshResult::Updated;
     }
 
     return PolicyRefreshResult::Unchanged;
   }
 
-  Value getValue(Env env) const
+  Napi::Value getValue(Napi::Env env) const override
   {
     if (!value.has_value())
       return env.Undefined();
@@ -70,7 +70,7 @@ public:
 
 protected:
   virtual std::optional<T> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const = 0;
-  virtual Value getJSValue(Env env, T value) const = 0;
+  virtual Napi::Value getJSValue(Napi::Env env, const T &value) const = 0;
 
 private:
   const std::string registryKey;
@@ -88,7 +88,7 @@ private:
     DWORD type;
 
     // First query to get required buffer size
-    auto result = RegQueryValueEx(hKey, name.c_str(), 0, &type, nullptr, &bufferSize);
+    auto result = RegQueryValueEx(hKey, name.c_str(), nullptr, &type, nullptr, &bufferSize);
 
     if (ERROR_SUCCESS != result && ERROR_MORE_DATA != result)
     {
@@ -96,14 +96,14 @@ private:
       return std::nullopt;
     }
 
-    if (std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
+    if (std::ranges::find(supportedTypes, type) == supportedTypes.end())
     {
       RegCloseKey(hKey);
       return std::nullopt;
     }
 
     std::vector<BYTE> buffer(bufferSize);
-    result = RegQueryValueEx(hKey, name.c_str(), 0, &type, buffer.data(), &bufferSize);
+    result = RegQueryValueEx(hKey, name.c_str(), nullptr, &type, buffer.data(), &bufferSize);
     RegCloseKey(hKey);
 
     if (ERROR_SUCCESS != result)

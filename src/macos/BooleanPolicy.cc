@@ -5,14 +5,12 @@
 
 #include "BooleanPolicy.hh"
 
-using namespace Napi;
-
-BooleanPolicy::BooleanPolicy(const std::string name, const std::string &productName)
+BooleanPolicy::BooleanPolicy(const std::string &name, const std::string &productName)
     : PreferencesPolicy(name, productName)
 {
 }
 
-Value BooleanPolicy::getJSValue(Env env, bool value) const
+Napi::Value BooleanPolicy::getJSValue(Napi::Env env, const bool &value) const
 {
   return Napi::Boolean::New(env, value);
 }
@@ -21,7 +19,7 @@ std::optional<bool> BooleanPolicy::read() const
 {
   auto pref = CFPreferencesCopyAppValue(key, appID);
 
-  if (pref == NULL)
+  if (pref == nullptr)
     return std::nullopt;
 
   if (CFGetTypeID(pref) != CFBooleanGetTypeID())

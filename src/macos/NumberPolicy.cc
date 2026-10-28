@@ -5,23 +5,21 @@
 
 #include "NumberPolicy.hh"
 
-using namespace Napi;
-
-NumberPolicy::NumberPolicy(const std::string name, const std::string &productName)
+NumberPolicy::NumberPolicy(const std::string &name, const std::string &productName)
     : PreferencesPolicy(name, productName)
 {
 }
 
-Value NumberPolicy::getJSValue(Env env, long long value) const
+Napi::Value NumberPolicy::getJSValue(Napi::Env env, const long long &value) const
 {
-  return Number::New(env, static_cast<double>(value));
+  return Napi::Number::New(env, static_cast<double>(value));
 }
 
 std::optional<long long> NumberPolicy::read() const
 {
   auto pref = CFPreferencesCopyAppValue(key, appID);
 
-  if (pref == NULL)
+  if (pref == nullptr)
     return std::nullopt;
 
   if (CFGetTypeID(pref) != CFNumberGetTypeID())
@@ -31,7 +29,7 @@ std::optional<long long> NumberPolicy::read() const
   }
 
   long long value;
-  if (CFNumberGetValue((CFNumberRef)pref, kCFNumberLongLongType, &value))
+  if (CFNumberGetValue(static_cast<CFNumberRef>(pref), kCFNumberLongLongType, &value))
   {
     CFRelease(pref);
     return value;

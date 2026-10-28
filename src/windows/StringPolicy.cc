@@ -5,9 +5,7 @@
 
 #include "StringPolicy.hh"
 
-using namespace Napi;
-
-StringPolicy::StringPolicy(const std::string name, const std::string &productName, const std::string &registryPath)
+StringPolicy::StringPolicy(const std::string &name, const std::string &productName, const std::string &registryPath)
     : RegistryPolicy(name, productName, {REG_SZ, REG_MULTI_SZ}, registryPath) {}
 
 std::optional<std::string> StringPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
@@ -36,7 +34,7 @@ std::optional<std::string> StringPolicy::parseRegistryValue(LPBYTE buffer, DWORD
   return std::string(reinterpret_cast<char *>(buffer), bufferSize - 1);
 }
 
-Value StringPolicy::getJSValue(Env env, std::string value) const
+Napi::Value StringPolicy::getJSValue(Napi::Env env, const std::string &value) const
 {
-  return String::New(env, value);
+  return Napi::String::New(env, value);
 }

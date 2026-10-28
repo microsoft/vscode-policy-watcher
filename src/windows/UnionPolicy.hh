@@ -18,9 +18,9 @@ using UnionPolicyValue = std::variant<bool, double, std::string>;
 class UnionPolicy : public Policy
 {
 public:
-  UnionPolicy(const std::string name, const std::string &productName, const std::string &registryPath, const std::vector<std::string> &types);
-  PolicyRefreshResult refresh();
-  Napi::Value getValue(Napi::Env env) const;
+  UnionPolicy(const std::string &name, const std::string &productName, const std::string &registryPath, const std::vector<std::string> &types);
+  PolicyRefreshResult refresh() override;
+  Napi::Value getValue(Napi::Env env) const override;
 
 private:
   std::optional<UnionPolicyValue> read(HKEY root) const;
