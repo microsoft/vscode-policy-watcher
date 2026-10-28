@@ -7,18 +7,17 @@
 #define MAC_NUMBER_POLICY_H
 
 #include <napi.h>
+#include <string>
 #include "PreferencesPolicy.hh"
-
-using namespace Napi;
 
 class NumberPolicy : public PreferencesPolicy<long long>
 {
 public:
-  NumberPolicy(const std::string name, const std::string &productName);
+  NumberPolicy(const std::string &name, const std::string &productName);
   std::optional<long long> read() const override;
 
 protected:
-  Value getJSValue(Env env, long long value) const override;
+  Napi::Value getJSValue(Napi::Env env, const long long &value) const override;
 };
 
 #endif

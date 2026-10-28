@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 #include "UnionPolicy.hh"
+#include <utility>
 #include <CoreFoundation/CoreFoundation.h>
 
-UnionPolicy::UnionPolicy(const std::string name, const std::string &productName, const std::vector<std::string> &types)
+UnionPolicy::UnionPolicy(const std::string &name, const std::string &productName, const std::vector<std::string> &types)
     : Policy(name),
       appID(CFStringCreateWithCString(nullptr, productName.c_str(), kCFStringEncodingUTF8)),
       key(CFStringCreateWithCString(nullptr, name.c_str(), kCFStringEncodingUTF8))
@@ -30,7 +31,7 @@ PolicyRefreshResult UnionPolicy::refresh()
   if (value == next)
     return value.has_value() ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet;
   auto removed = value.has_value() && !next.has_value();
-  value = next;
+  value = std::move(next);
   return removed ? PolicyRefreshResult::Removed : PolicyRefreshResult::Updated;
 }
 
@@ -62,11 +63,14 @@ std::optional<UnionPolicyValue> UnionPolicy::read() const
     if (CFNumberGetValue(static_cast<CFNumberRef>(pref), kCFNumberLongLongType, &number))
       result = static_cast<double>(number);
   } else if (type == CFStringGetTypeID() && acceptsString) {
-    CFIndex length = CFStringGetLength(static_cast<CFStringRef>(pref));
+    auto strRef = static_cast<CFStringRef>(pref);
+    CFIndex length = CFStringGetLength(strRef);
     CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    std::vector<char> buffer(maxSize);
-    if (CFStringGetCString(static_cast<CFStringRef>(pref), buffer.data(), maxSize, kCFStringEncodingUTF8))
-      result = std::string(buffer.data());
+    std::string str(static_cast<size_t>(maxSize), '\0');
+    if (CFStringGetCString(strRef, str.data(), maxSize, kCFStringEncodingUTF8)) {
+      str.resize(std::char_traits<char>::length(str.data()));
+      result = std::move(str);
+    }
   }
   CFRelease(pref);
   return result;

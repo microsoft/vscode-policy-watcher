@@ -7,16 +7,15 @@
 #define STRING_POLICY_H
 
 #include <napi.h>
+#include <string>
 #include "PreferencesPolicy.hh"
-
-using namespace Napi;
 
 class StringPolicy : public PreferencesPolicy<std::string>
 {
 public:
-    StringPolicy(const std::string name, const std::string &productName);
+    StringPolicy(const std::string &name, const std::string &productName);
 protected:
-    Value getJSValue(Env env, std::string value) const override;
+    Napi::Value getJSValue(Napi::Env env, const std::string &value) const override;
     std::optional<std::string> read() const override;
 };
 

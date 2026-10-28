@@ -7,9 +7,7 @@
 #include <cstdint>
 #include <cstring>
 
-using namespace Napi;
-
-NumberPolicy::NumberPolicy(const std::string name, const std::string &productName, const std::string &registryPath)
+NumberPolicy::NumberPolicy(const std::string &name, const std::string &productName, const std::string &registryPath)
     : RegistryPolicy(name, productName, {REG_DWORD, REG_QWORD}, registryPath) {}
 
 std::optional<long long> NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
@@ -31,7 +29,7 @@ std::optional<long long> NumberPolicy::parseRegistryValue(LPBYTE buffer, DWORD b
   return std::nullopt;
 }
 
-Value NumberPolicy::getJSValue(Env env, long long value) const
+Napi::Value NumberPolicy::getJSValue(Napi::Env env, const long long &value) const
 {
-  return Number::New(env, static_cast<double>(value));
+  return Napi::Number::New(env, static_cast<double>(value));
 }

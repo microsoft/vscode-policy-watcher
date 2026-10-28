@@ -7,9 +7,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 #include <windows.h>
 
-UnionPolicy::UnionPolicy(const std::string name, const std::string &productName, const std::string &customRegistryPath, const std::vector<std::string> &types)
+UnionPolicy::UnionPolicy(const std::string &name, const std::string &productName, const std::string &customRegistryPath, const std::vector<std::string> &types)
     : Policy(name),
       registryKey(customRegistryPath.empty() ? ("Software\\Policies\\Microsoft\\" + productName) : customRegistryPath)
 {
@@ -29,7 +30,7 @@ PolicyRefreshResult UnionPolicy::refresh()
   if (value == next)
     return value.has_value() ? PolicyRefreshResult::Unchanged : PolicyRefreshResult::NotSet;
   auto removed = value.has_value() && !next.has_value();
-  value = next;
+  value = std::move(next);
   return removed ? PolicyRefreshResult::Removed : PolicyRefreshResult::Updated;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@vscode/policy-watcher",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "",
   "main": "index.js",
   "repository": {
@@ -10,9 +10,18 @@
   "author": "João Moreno",
   "license": "MIT",
   "types": "index.d.ts",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "bindings": "^1.5.0",
     "node-addon-api": "^8.2.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
   },
   "release": {
     "branches": [

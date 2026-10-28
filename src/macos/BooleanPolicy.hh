@@ -7,18 +7,17 @@
 #define MAC_BOOLEAN_POLICY_H
 
 #include <napi.h>
+#include <string>
 #include "PreferencesPolicy.hh"
-
-using namespace Napi;
 
 class BooleanPolicy : public PreferencesPolicy<bool>
 {
 public:
-  BooleanPolicy(const std::string name, const std::string &productName);
+  BooleanPolicy(const std::string &name, const std::string &productName);
   std::optional<bool> read() const override;
 
 protected:
-  Value getJSValue(Env env, bool value) const override;
+  Napi::Value getJSValue(Napi::Env env, const bool &value) const override;
 };
 
 #endif

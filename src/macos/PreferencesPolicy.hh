@@ -7,29 +7,30 @@
 #define PREFERENCES_POLICY_H
 
 #include <napi.h>
+#include <optional>
+#include <string>
+#include <utility>
 #include <CoreFoundation/CoreFoundation.h>
 #include "../Policy.hh"
-
-using namespace Napi;
 
 template <typename T>
 class PreferencesPolicy : public Policy
 {
 public:
-    PreferencesPolicy(const std::string name, const std::string &productName)
+    PreferencesPolicy(const std::string &name, const std::string &productName)
         : Policy(name),
-          appID(CFStringCreateWithCString(NULL, productName.c_str(), kCFStringEncodingUTF8)),
-          key(CFStringCreateWithCString(NULL, name.c_str(), kCFStringEncodingUTF8))
+          appID(CFStringCreateWithCString(nullptr, productName.c_str(), kCFStringEncodingUTF8)),
+          key(CFStringCreateWithCString(nullptr, name.c_str(), kCFStringEncodingUTF8))
     {
     }
 
-    ~PreferencesPolicy()
+    ~PreferencesPolicy() override
     {
         CFRelease(appID);
         CFRelease(key);
     }
 
-    PolicyRefreshResult refresh()
+    PolicyRefreshResult refresh() override
     {
         auto newValue = read();
 
@@ -46,14 +47,14 @@ public:
         // Is the value updated?
         if (value != newValue)
         {
-            value = newValue;
+            value = std::move(newValue);
             return PolicyRefreshResult::Updated;
         }
 
         return PolicyRefreshResult::Unchanged;
     }
 
-    Value getValue(Env env) const
+    Napi::Value getValue(Napi::Env env) const override
     {
         if (!value.has_value())
             return env.Undefined();
@@ -64,9 +65,7 @@ protected:
     std::optional<T> value;
     const CFStringRef appID;
     const CFStringRef key;
-    virtual Value getJSValue(Env env, T value) const = 0;
+    virtual Napi::Value getJSValue(Napi::Env env, const T &value) const = 0;
     virtual std::optional<T> read() const = 0;
-
-private:
 };
 #endif

@@ -7,19 +7,18 @@
 #define BOOLEAN_POLICY_H
 
 #include <napi.h>
+#include <string>
 #include <windows.h>
 #include "RegistryPolicy.hh"
-
-using namespace Napi;
 
 class BooleanPolicy : public RegistryPolicy<bool>
 {
 public:
-  BooleanPolicy(const std::string& name, const std::string &productName, const std::string &registryPath = "");
+  BooleanPolicy(const std::string &name, const std::string &productName, const std::string &registryPath = "");
 
 protected:
-  std::optional<bool> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const;
-  Value getJSValue(Env env, bool value) const;
+  std::optional<bool> parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const override;
+  Napi::Value getJSValue(Napi::Env env, const bool &value) const override;
 };
 
 #endif

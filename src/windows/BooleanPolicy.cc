@@ -5,12 +5,9 @@
 
 #include "BooleanPolicy.hh"
 #include <cstring>
-#include <iostream>
 
-using namespace Napi;
-
-BooleanPolicy::BooleanPolicy(const std::string& name, const std::string& productName, const std::string &registryPath)
-  : RegistryPolicy(name, productName, {REG_DWORD}, registryPath) {}
+BooleanPolicy::BooleanPolicy(const std::string &name, const std::string &productName, const std::string &registryPath)
+    : RegistryPolicy(name, productName, {REG_DWORD}, registryPath) {}
 
 std::optional<bool> BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD bufferSize, DWORD type) const
 {
@@ -24,7 +21,7 @@ std::optional<bool> BooleanPolicy::parseRegistryValue(LPBYTE buffer, DWORD buffe
   return (value != 0);
 }
 
-Value BooleanPolicy::getJSValue(Env env, bool value) const
+Napi::Value BooleanPolicy::getJSValue(Napi::Env env, const bool &value) const
 {
-  return Boolean::New(env, value);
+  return Napi::Boolean::New(env, value);
 }

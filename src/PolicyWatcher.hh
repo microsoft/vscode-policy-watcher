@@ -7,6 +7,13 @@
 #define POLICY_WATCHER_H
 
 #include <napi.h>
+#include <array>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <thread>
 #include <vector>
 #include "Policy.hh"
 
@@ -19,43 +26,49 @@
 #include <CoreServices/CoreServices.h>
 #endif
 
-using namespace Napi;
-
-class PolicyWatcher : public AsyncProgressQueueWorker<const Policy *>
+class PolicyWatcher
 {
 public:
-  PolicyWatcher(std::string productName, const Function &okCallback);
-  PolicyWatcher(std::string productName, const Function &okCallback, std::string registryPath)
-      : PolicyWatcher(productName, okCallback)
-  {
-    this->registryPath = registryPath;
-  }
+  PolicyWatcher(const std::string &productName, const Napi::Function &okCallback, const std::string &registryPath = "");
   ~PolicyWatcher();
 
-  void AddStringPolicy(const std::string name);
-  void AddNumberPolicy(const std::string name);
-  void AddBooleanPolicy(const std::string name);
-  void AddUnionPolicy(const std::string name, const std::vector<std::string> &types);
+  PolicyWatcher(const PolicyWatcher &) = delete;
+  PolicyWatcher &operator=(const PolicyWatcher &) = delete;
 
-  void OnExecute(Napi::Env env);
-  void Execute(const ExecutionProgress &progress);
-  void OnProgress(const Policy *const *policies, size_t count);
-  void OnOK();
+  void AddStringPolicy(const std::string &name);
+  void AddNumberPolicy(const std::string &name);
+  void AddBooleanPolicy(const std::string &name);
+  void AddUnionPolicy(const std::string &name, const std::vector<std::string> &types);
+
+  bool Start(Napi::Env env);
+  void Execute();
   void Dispose();
 
+private:
+  void RefreshPolicies(bool first);
+  static void CallJS(Napi::Env env, Napi::Function callback, PolicyWatcher *context, void *data);
+  static void OnEnvCleanup(void *arg);
+
 protected:
+  Napi::Env env;
   std::string productName;
   std::string registryPath;
+  Napi::FunctionReference callbackRef;
   std::vector<std::unique_ptr<Policy>> policies;
+  std::vector<const Policy *> updatedPolicies;
+  std::mutex mutex;
+  using TSFN = Napi::TypedThreadSafeFunction<PolicyWatcher, void, &PolicyWatcher::CallJS>;
+  TSFN tsfn;
+  std::atomic<bool> disposed{false};
 
 #ifdef WINDOWS
-  HANDLE handles[4];
+  std::thread workerThread;
+  std::array<HANDLE, 4> handles{};
 #endif
 
 #ifdef MACOS
-  FSEventStreamRef stream;
-  dispatch_semaphore_t sem;
-  bool disposed;
+  FSEventStreamRef stream = nullptr;
+  dispatch_queue_t queue = nullptr;
 #endif
 
 };

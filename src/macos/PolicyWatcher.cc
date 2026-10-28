@@ -8,137 +8,189 @@
 #include "NumberPolicy.hh"
 #include "BooleanPolicy.hh"
 #include "UnionPolicy.hh"
-#include <thread>
 
-using namespace Napi;
+namespace {
 
-static void fsevents_callback(ConstFSEventStreamRef streamRef,
-                            void *clientCallBackInfo,
-                            size_t numEvents,
-                            void *eventPaths,
-                            const FSEventStreamEventFlags eventFlags[],
-                            const FSEventStreamEventId eventIds[])
+void FSEventsCallback(ConstFSEventStreamRef /*streamRef*/,
+                      void *clientCallBackInfo,
+                      size_t /*numEvents*/,
+                      void * /*eventPaths*/,
+                      const FSEventStreamEventFlags /*eventFlags*/[],
+                      const FSEventStreamEventId /*eventIds*/[])
 {
-    dispatch_semaphore_t *sem = (dispatch_semaphore_t *)clientCallBackInfo;
-    dispatch_semaphore_signal(*sem);
+  auto *watcher = static_cast<PolicyWatcher *>(clientCallBackInfo);
+  watcher->Execute();
 }
 
-PolicyWatcher::PolicyWatcher(std::string productName, const Function &okCallback)
-    : AsyncProgressQueueWorker(okCallback),
+} // namespace
+
+PolicyWatcher::PolicyWatcher(const std::string &productName, const Napi::Function &okCallback, const std::string &registryPath)
+    : env(okCallback.Env()),
       productName(productName),
-      stream(nullptr),
-      sem(nullptr),
-      disposed(false)
+      registryPath(registryPath),
+      callbackRef(Napi::Persistent(okCallback))
 {
 }
 
 PolicyWatcher::~PolicyWatcher()
 {
-    if (stream) {
-        FSEventStreamStop(stream);
-        FSEventStreamInvalidate(stream);
-        FSEventStreamRelease(stream);
-    }
-    if (sem) {
-        dispatch_release(sem);
-    }
+  napi_remove_env_cleanup_hook(env, OnEnvCleanup, this);
+  Dispose();
+  if (queue)
+  {
+    dispatch_release(queue);
+  }
 }
 
-void PolicyWatcher::AddStringPolicy(const std::string name)
+void PolicyWatcher::AddStringPolicy(const std::string &name)
 {
   policies.push_back(std::make_unique<StringPolicy>(name, productName));
 }
-void PolicyWatcher::AddNumberPolicy(const std::string name)
+
+void PolicyWatcher::AddNumberPolicy(const std::string &name)
 {
-    policies.push_back(std::make_unique<NumberPolicy>(name, productName));
+  policies.push_back(std::make_unique<NumberPolicy>(name, productName));
 }
 
-void PolicyWatcher::AddBooleanPolicy(const std::string name)
+void PolicyWatcher::AddBooleanPolicy(const std::string &name)
 {
-    policies.push_back(std::make_unique<BooleanPolicy>(name, productName));
+  policies.push_back(std::make_unique<BooleanPolicy>(name, productName));
 }
 
-void PolicyWatcher::AddUnionPolicy(const std::string name, const std::vector<std::string> &types)
+void PolicyWatcher::AddUnionPolicy(const std::string &name, const std::vector<std::string> &types)
 {
   policies.push_back(std::make_unique<UnionPolicy>(name, productName, types));
 }
 
-void PolicyWatcher::OnExecute(Napi::Env env)
+bool PolicyWatcher::Start(Napi::Env env)
 {
-  AsyncProgressQueueWorker::OnExecute(env);
-}
+  updatedPolicies.reserve(policies.size());
+  tsfn = TSFN::New(
+      env,
+      callbackRef.Value(),
+      "PolicyWatcher",
+      0,
+      1,
+      this,
+      [](Napi::Env, void *, PolicyWatcher *watcher) {
+        delete watcher;
+      },
+      static_cast<void *>(nullptr));
+  callbackRef.Reset();
 
-void PolicyWatcher::Execute(const ExecutionProgress &progress)
-{
-    std::vector<const Policy *> updatedPolicies;
-    bool first = true;
-
-    // Watch for changes
-    CFStringRef path = CFSTR("/Library/Managed Preferences/");
-    sem = dispatch_semaphore_create(0);
-    FSEventStreamContext context = {0, &sem, NULL, NULL, NULL};
-    stream = FSEventStreamCreate(NULL,
-                               &fsevents_callback,
+  const std::string queueLabel = productName + ".policy-watcher";
+  queue = dispatch_queue_create(queueLabel.c_str(), DISPATCH_QUEUE_SERIAL);
+  CFStringRef path = CFSTR("/Library/Managed Preferences/");
+  FSEventStreamContext context = {0, this, nullptr, nullptr, nullptr};
+  CFArrayRef pathsToWatch = CFArrayCreate(nullptr, reinterpret_cast<const void **>(&path), 1, nullptr);
+  stream = FSEventStreamCreate(nullptr,
+                               &FSEventsCallback,
                                &context,
-                               CFArrayCreate(NULL, (const void **)&path, 1, NULL),
+                               pathsToWatch,
                                kFSEventStreamEventIdSinceNow,
                                1.0,
                                kCFStreamEventNone);
+  CFRelease(pathsToWatch);
 
-    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    FSEventStreamSetDispatchQueue(stream, queue);
-    FSEventStreamStart(stream);
+  FSEventStreamSetDispatchQueue(stream, queue);
+  FSEventStreamStart(stream);
 
-    while (!disposed)
-    {
-        updatedPolicies.clear();
-        bool update = false;
-        for (auto &policy : policies)
-        {            
-            switch(policy->refresh())
-            {
-                case PolicyRefreshResult::Updated:
-                case PolicyRefreshResult::Removed:
-                    updatedPolicies.push_back(policy.get());
-                    update = true;
-                    break;
-                case PolicyRefreshResult::Unchanged:
-                    updatedPolicies.push_back(policy.get());
-                    break;
-            }
-        }
+  dispatch_async(queue, ^{
+    RefreshPolicies(true);
+  });
 
-        if (first || update)
-            progress.Send(&updatedPolicies[0], updatedPolicies.size());
-
-        first = false;
-        dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
-    }
+  napi_add_env_cleanup_hook(env, OnEnvCleanup, this);
+  return true;
 }
 
-void PolicyWatcher::OnProgress(const Policy *const *policies, size_t count) 
+void PolicyWatcher::OnEnvCleanup(void *arg)
 {
-  HandleScope scope(Env());
-  auto result = Object::New(Env());
+  auto *watcher = static_cast<PolicyWatcher *>(arg);
+  watcher->Dispose();
+}
 
-  if (count == 0)
+void PolicyWatcher::Execute()
+{
+  RefreshPolicies(false);
+}
+
+void PolicyWatcher::RefreshPolicies(bool first)
+{
+  if (disposed.load(std::memory_order_acquire))
   {
-    Callback().Call(Receiver().Value(), {result});
     return;
   }
 
-  for (size_t i = 0; i < count; i++)
-    result.Set(policies[i]->name, policies[i]->getValue(Env()));
+  bool shouldNotify = false;
+  {
+    std::scoped_lock lock(mutex);
+    updatedPolicies.clear();
+    bool update = false;
+    for (const auto &policy : policies)
+    {
+      switch (policy->refresh())
+      {
+      case PolicyRefreshResult::Updated:
+      case PolicyRefreshResult::Removed:
+        updatedPolicies.push_back(policy.get());
+        update = true;
+        break;
+      case PolicyRefreshResult::Unchanged:
+        updatedPolicies.push_back(policy.get());
+        break;
+      case PolicyRefreshResult::NotSet:
+        break;
+      }
+    }
+    shouldNotify = first || update;
+  }
 
-  Callback().Call(Receiver().Value(), {result});
+  if (shouldNotify)
+  {
+    tsfn.NonBlockingCall();
+  }
 }
 
-void PolicyWatcher::OnOK() {}
-
-void PolicyWatcher::Dispose() 
+void PolicyWatcher::CallJS(Napi::Env env, Napi::Function callback, PolicyWatcher *context, void * /*data*/)
 {
-    disposed = true;
-    if (sem) {
-        dispatch_semaphore_signal(sem);
+  if (env == nullptr || callback == nullptr || context->disposed.load(std::memory_order_acquire))
+  {
+    return;
+  }
+
+  Napi::HandleScope scope(env);
+  auto result = Napi::Object::New(env);
+
+  {
+    std::scoped_lock lock(context->mutex);
+    for (const auto *policy : context->updatedPolicies)
+    {
+      result.Set(policy->name, policy->getValue(env));
     }
+  }
+
+  callback.Call({result});
+}
+
+void PolicyWatcher::Dispose()
+{
+  if (!disposed.exchange(true, std::memory_order_acq_rel))
+  {
+    if (queue)
+    {
+      dispatch_sync(queue, ^{
+        if (stream)
+        {
+          FSEventStreamStop(stream);
+          FSEventStreamInvalidate(stream);
+          FSEventStreamRelease(stream);
+          stream = nullptr;
+        }
+      });
+    }
+    if (static_cast<napi_threadsafe_function>(tsfn) != nullptr)
+    {
+      tsfn.Release();
+    }
+  }
 }

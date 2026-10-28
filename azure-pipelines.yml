@@ -53,11 +53,11 @@ extends:
           - script: npm ci
         testPlatforms:
           - name: Linux
-            nodeVersions: [22.x]
+            nodeVersions: [22.x, 24.x]
           - name: MacOS
-            nodeVersions: [22.x]
+            nodeVersions: [22.x, 24.x]
           - name: Windows
-            nodeVersions: [22.x]
+            nodeVersions: [22.x, 24.x]
         testSteps:
           - task: UsePythonVersion@0
             inputs:
@@ -85,6 +85,7 @@ extends:
             condition: eq(variables['Agent.OS'], 'Linux')
 
           - script: npm ci
+          - script: npm test
         apiScanSoftwareName: 'vscode-policy-watcher'
         apiScanSoftwareVersion: '1.1'
         publishPackage: ${{ parameters.publishPackage }}
