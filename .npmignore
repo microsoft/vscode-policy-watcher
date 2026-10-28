@@ -1,6 +1,8 @@
 azure-pipelines.yml
+.github
 .vscode
 build
+test
 CODE_OF_CONDUCT.md
 SECURITY.md
 SUPPORT.md
