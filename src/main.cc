@@ -124,7 +124,7 @@ Napi::Value CreateWatcher(const Napi::CallbackInfo &info)
           return env.Undefined();
         }
         std::string type = rawType.As<Napi::String>();
-        if (std::ranges::find(policyTypes, type) == policyTypes.end())
+        if (std::find(policyTypes.begin(), policyTypes.end(), type) == policyTypes.end())
         {
           policyTypes.push_back(type);
         }

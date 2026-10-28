@@ -96,7 +96,7 @@ private:
       return std::nullopt;
     }
 
-    if (std::ranges::find(supportedTypes, type) == supportedTypes.end())
+    if (std::find(supportedTypes.begin(), supportedTypes.end(), type) == supportedTypes.end())
     {
       RegCloseKey(hKey);
       return std::nullopt;
